@@ -363,55 +363,73 @@ Create a unique floor plan that clearly demonstrates this layout approach. Make 
         start_time = time.time()
         last_error = None
         
-        # Try Gemini API for image generation
+        # Try Gemini API for image generation via REST API
         for attempt in range(self.max_retries):
             try:
-                print(f"[Attempt {attempt + 1}] Generating floor plan with Gemini: {variation_type}")
+                print(f"[Attempt {attempt + 1}] Generating floor plan with Imagen 3: {variation_type}")
                 
-                # Use Imagen 3 model for image generation
-                imagen_model = genai.ImageGenerationModel("imagen-3.0-generate-002")
+                # Use REST API for Imagen 3 image generation
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict"
                 
-                # Generate image
-                response = await asyncio.to_thread(
-                    imagen_model.generate_images,
-                    prompt=full_prompt,
-                    number_of_images=1,
-                    aspect_ratio="4:3",
-                    safety_filter_level="block_only_high",
-                )
+                headers = {
+                    "Content-Type": "application/json",
+                }
                 
-                # Extract image from response
-                if response.images:
-                    image = response.images[0]
-                    # Convert to bytes
-                    img_buffer = io.BytesIO()
-                    image._pil_image.save(img_buffer, format='PNG')
-                    image_data = img_buffer.getvalue()
-                    
-                    generation_time = (time.time() - start_time) * 1000
-                    print(f"✓ Successfully generated floor plan: {variation_type}")
-                    
-                    return GeneratedPlan(
-                        success=True,
-                        plan_id=plan_id,
-                        image_data=image_data,
-                        prompt_used=full_prompt,
-                        variation_type=variation_type,
-                        generation_time_ms=generation_time
+                payload = {
+                    "instances": [{"prompt": full_prompt}],
+                    "parameters": {
+                        "sampleCount": 1,
+                        "aspectRatio": "4:3",
+                        "safetyFilterLevel": "block_only_high",
+                    }
+                }
+                
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    response = await client.post(
+                        f"{url}?key={self.api_key}",
+                        json=payload,
+                        headers=headers
                     )
-                else:
-                    last_error = "No images in response"
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        
+                        # Extract image from response
+                        if "predictions" in data and len(data["predictions"]) > 0:
+                            prediction = data["predictions"][0]
+                            if "bytesBase64Encoded" in prediction:
+                                image_data = base64.b64decode(prediction["bytesBase64Encoded"])
+                                
+                                generation_time = (time.time() - start_time) * 1000
+                                print(f"✓ Successfully generated floor plan: {variation_type}")
+                                
+                                return GeneratedPlan(
+                                    success=True,
+                                    plan_id=plan_id,
+                                    image_data=image_data,
+                                    prompt_used=full_prompt,
+                                    variation_type=variation_type,
+                                    generation_time_ms=generation_time
+                                )
+                        
+                        last_error = f"No image in response: {data}"
+                    else:
+                        error_data = response.json() if response.headers.get("content-type", "").startswith("application/json") else response.text
+                        last_error = f"API error {response.status_code}: {error_data}"
+                        print(f"✗ {last_error}")
+                        
+                        # Check for rate limiting
+                        if response.status_code == 429:
+                            print(f"  Rate limited, waiting {self.retry_delay * (attempt + 1)}s...")
+                            await asyncio.sleep(self.retry_delay * (attempt + 1))
+                            continue
                     
             except Exception as e:
                 last_error = str(e)
                 print(f"✗ Gemini API error: {last_error}")
                 
-                # Check for rate limiting
-                if "429" in str(e) or "quota" in str(e).lower() or "rate" in str(e).lower():
-                    print(f"  Rate limited, waiting {self.retry_delay * (attempt + 1)}s...")
-                    await asyncio.sleep(self.retry_delay * (attempt + 1))
-                elif attempt < self.max_retries - 1:
-                    await asyncio.sleep(self.retry_delay)
+            if attempt < self.max_retries - 1:
+                await asyncio.sleep(self.retry_delay)
         
         generation_time = (time.time() - start_time) * 1000
         
