@@ -11,18 +11,27 @@ This tool:
 4. Visualizes clustering on a scatter plot
 5. Outputs a diversity score (0-1 scale)
 
+## Live Demo
+
+- **Frontend**: [https://drafted.site](https://drafted.site)
+- **Backend API**: [https://drafted-diversity-api.onrender.com](https://drafted-diversity-api.onrender.com)
+
 ## Key Features
 
-- **AI Generation**: Generate 4-12 diverse floor plans with one click using Gemini
+- **AI Generation**: Generate 4-12 diverse floor plans with one click using Gemini 2.0 Flash
 - **10 Layout Variations**: Linear, L-shaped, open concept, split bedroom, and more
-- **Automatic Analysis**: Generated plans are immediately analyzed for diversity
+- **Two-Phase Processing**: Plans display immediately while diversity analysis runs in background
+- **Real-time Progress**: Visual indicators show generation and analysis status
 - **Upload Support**: Analyze your own existing floor plan images
+- **Beautiful UI**: Clean, modern interface matching the Drafted.ai aesthetic
 
 ## Architecture
 
 ```
 ├── backend/                  # Python FastAPI backend
 │   ├── api/                  # REST API endpoints
+│   │   ├── routes.py         # All API routes
+│   │   └── schemas.py        # Pydantic models
 │   ├── extractors/           # Feature extraction modules
 │   │   ├── color_segmentation.py   # Room detection via color
 │   │   ├── geometric.py            # Shape/size metrics
@@ -33,19 +42,29 @@ This tool:
 │   │   ├── metrics.py              # Individual metrics
 │   │   ├── aggregator.py           # Combined score
 │   │   └── visualization.py        # Scatter plot data
-│   ├── generation/           # Nanobana API integration
+│   ├── generation/           # Gemini AI integration
+│   │   ├── gemini_client.py        # API client with retry logic
+│   │   └── prompt_templates.py     # Engineered prompts
 │   └── utils/                # Utilities
 │
-└── frontend/                 # Next.js React frontend
-    ├── app/                  # Next.js app router
-    ├── components/           # React components
-    │   ├── layout/           # Header, Hero, Section
-    │   ├── upload/           # DropZone, PlanGallery
-    │   ├── visualization/    # ScatterPlot, DiversityScore
-    │   ├── cards/            # PlanCard, ScoreCard
-    │   └── analysis/         # AnalysisPanel
-    ├── hooks/                # Custom React hooks
-    └── lib/                  # API client, types, utilities
+├── frontend/                 # Next.js React frontend
+│   ├── app/                  # Next.js app router
+│   │   ├── page.tsx          # Main application
+│   │   └── how-it-works/     # Documentation page
+│   ├── components/           # React components
+│   │   ├── layout/           # Header, Section
+│   │   ├── sidebar/          # GenerationSidebar
+│   │   ├── drafts/           # DraftGrid
+│   │   ├── upload/           # DropZone
+│   │   ├── visualization/    # ScatterPlot, DiversityScore
+│   │   ├── generation/       # GenerationForm, GenerationProgress
+│   │   └── analysis/         # AnalysisPanel
+│   ├── hooks/                # Custom React hooks
+│   │   ├── useAnalysis.ts    # Upload/analysis state
+│   │   └── useGeneration.ts  # Generation state (two-phase)
+│   └── lib/                  # API client, types, utilities
+│
+└── render.yaml               # Render deployment blueprint
 ```
 
 ## Features Extracted
@@ -69,9 +88,10 @@ This tool:
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - Node.js 18+
 - pip / npm or pnpm
+- Google AI Studio API key
 
 ### Backend Setup
 
@@ -90,8 +110,11 @@ source venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
+# Create .env file with your API key
+echo GEMINI_API_KEY=your_api_key_here > .env
+
 # Run the server
-uvicorn main:app --reload --port 8000
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 ### Frontend Setup
@@ -108,22 +131,28 @@ npm run dev
 
 ### Environment Variables
 
-Create a `.env` file in the `backend/` directory:
-
+**Backend** (`backend/.env`):
 ```bash
-# Required for AI generation
 GEMINI_API_KEY=your_google_ai_studio_api_key
 ```
 
-Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+**Frontend** (`frontend/.env.local` - for production):
+```bash
+NEXT_PUBLIC_API_URL=https://your-backend-url.onrender.com
+```
+
+Get your Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
 ### Usage
 
 1. Open http://localhost:3000 in your browser
 2. Choose your workflow:
-   - **Generate with AI**: Configure bedrooms, style, count → Generate diverse plans
+   - **Generate with AI**: Configure bedrooms, bathrooms, style, count → Generate diverse plans
    - **Upload Existing**: Upload 10-20 floor plan images (PNG or JPG)
-3. View results: diversity score, scatter plot, and metric breakdown
+3. Watch the two-phase process:
+   - Plans appear immediately after generation
+   - "Generating Diversity Report" indicator shows analysis progress
+4. View results: diversity score, scatter plot, and metric breakdown
 
 ## API Endpoints
 
@@ -136,6 +165,7 @@ Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
 | `/api/plans/{id}` | DELETE | Delete a plan |
 | `/api/analyze` | POST | Run diversity analysis |
 | `/api/plan/{id}/thumbnail` | GET | Get plan thumbnail |
+| `/health` | GET | Health check |
 
 ### Generation Request Example
 
@@ -147,13 +177,23 @@ POST /api/generate
   "sqft": 2000,
   "style": "modern",
   "count": 6,
-  "additional_rooms": ["office", "mudroom"]
+  "additional_rooms": ["office", "mudroom"],
+  "skip_analysis": false
+}
+```
+
+### Analysis Request Example
+
+```json
+POST /api/analyze
+{
+  "plan_ids": ["gen_abc123", "gen_def456", "gen_ghi789"]
 }
 ```
 
 ## Color-Coded Floor Plans
 
-For best results, generate floor plans with these room colors:
+For best results, floor plans use these room colors:
 
 | Room Type | Color | Hex |
 |-----------|-------|-----|
@@ -173,7 +213,7 @@ The `backend/generation/` module includes:
 Carefully crafted prompts ensure Gemini outputs analyzable floor plans:
 - Strict color palette enforcement for room detection
 - 10 layout variation strategies (linear, L-shaped, courtyard, etc.)
-- Negative prompting to avoid furniture, 3D views, labels
+- Response modality set to IMAGE for direct image generation
 
 ### Layout Variations
 Each generated plan uses a different layout strategy:
@@ -188,26 +228,40 @@ Each generated plan uses a different layout strategy:
 9. **Front-to-Back** - Public to private gradient
 10. **Offset** - Staggered room positions
 
-See `prompt_builder.py` for the complete prompt engineering system.
+### Synthetic Fallback
+If Gemini API fails (rate limits, etc.), the system generates synthetic placeholder images to ensure the prototype always produces output.
+
+## Deployment (Render)
+
+This project includes a `render.yaml` Blueprint for easy deployment:
+
+1. Fork this repository
+2. Create a new Blueprint on [Render](https://render.com)
+3. Connect your GitHub repo
+4. Set the `GEMINI_API_KEY` environment variable in the backend service
+5. Set `NEXT_PUBLIC_API_URL` in the frontend to your backend URL
+
+### Services Created
+- **drafted-diversity-api**: Python FastAPI backend
+- **drafted-diversity-frontend**: Next.js frontend
 
 ## Tech Stack
 
 **Backend:**
 - FastAPI
-- Google Generative AI (Gemini)
+- Google Generative AI (Gemini 2.0 Flash)
 - OpenCV, scikit-image
 - PyTorch (ResNet50)
 - scikit-learn, UMAP
 - NetworkX
 
 **Frontend:**
-- Next.js 14
-- React, TypeScript
+- Next.js 14 (App Router)
+- React 18, TypeScript
 - D3.js
 - TailwindCSS
 - Framer Motion
 
 ## License
 
-MIT License - Built as a prototype for Drafted.ai
-
+MIT License - Built as a prototype for [Drafted.ai](https://drafted.ai)
