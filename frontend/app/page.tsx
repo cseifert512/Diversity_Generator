@@ -421,7 +421,11 @@ export default function Home() {
                     exit={{ opacity: 0, height: 0 }}
                     className="mb-6"
                   >
-                    <AnalysisPanel result={currentAnalysis} />
+                    <AnalysisPanel 
+                      result={currentAnalysis}
+                      plans={currentPlans}
+                      thumbnails={currentStylizedThumbnails}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>

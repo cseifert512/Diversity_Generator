@@ -2,17 +2,29 @@
 
 import { motion } from 'framer-motion';
 import { Layers, GitBranch, Timer, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
-import type { AnalysisResponse } from '@/lib/types';
+import type { AnalysisResponse, UploadedPlan } from '@/lib/types';
 import { ScatterPlot } from '../visualization/ScatterPlot';
 import { getClusterColor } from '@/lib/colors';
 
 interface AnalysisPanelProps {
   result: AnalysisResponse;
+  plans?: UploadedPlan[];  // Plans with display_name
+  thumbnails?: Record<string, string>;  // Stylized thumbnails
 }
 
-export function AnalysisPanel({ result }: AnalysisPanelProps) {
+export function AnalysisPanel({ result, plans: plansList, thumbnails }: AnalysisPanelProps) {
   const { diversity, visualization, plan_count, processing_time_ms, plans } = result;
   const clusterCount = visualization.clusters.length;
+
+  // Build display names map from plans
+  const displayNames: Record<string, string> = {};
+  if (plansList) {
+    plansList.forEach(plan => {
+      if (plan.display_name) {
+        displayNames[plan.id] = plan.display_name;
+      }
+    });
+  }
 
   // Determine score status
   const scoreStatus = diversity.score >= 0.7 ? 'excellent' : 
@@ -160,6 +172,8 @@ export function AnalysisPanel({ result }: AnalysisPanelProps) {
                   bounds={visualization.bounds}
                   width={500}
                   height={320}
+                  displayNames={displayNames}
+                  thumbnails={thumbnails || {}}
                 />
               </div>
             </div>

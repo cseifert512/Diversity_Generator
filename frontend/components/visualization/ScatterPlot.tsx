@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { ScatterPoint, ClusterInfo, PlotBounds } from '@/lib/types';
 import { getClusterColor } from '@/lib/colors';
 
@@ -15,6 +15,9 @@ interface ScatterPlotProps {
   selectedPointId?: string;
   width?: number;
   height?: number;
+  // New props for display names and thumbnails
+  displayNames?: Record<string, string>;  // Map of point id to display name
+  thumbnails?: Record<string, string>;    // Map of point id to thumbnail URL
 }
 
 export function ScatterPlot({
@@ -26,10 +29,19 @@ export function ScatterPlot({
   selectedPointId,
   width = 500,
   height = 320,
+  displayNames = {},
+  thumbnails = {},
 }: ScatterPlotProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoveredPoint, setHoveredPoint] = useState<ScatterPoint | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [clickedPoint, setClickedPoint] = useState<ScatterPoint | null>(null);
+  const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
+
+  // Get display name for a point - prefer user-assigned name, fall back to label
+  const getDisplayName = (point: ScatterPoint) => {
+    return displayNames[point.id] || point.label || `Plan ${point.id.slice(-4)}`;
+  };
 
   useEffect(() => {
     if (!svgRef.current || points.length === 0) return;
@@ -142,6 +154,12 @@ export function ScatterPlot({
         onPointHover?.(null);
       })
       .on('click', (event, d) => {
+        // Show thumbnail popup
+        setClickedPoint(d);
+        setPopupPos({ 
+          x: xScale(d.x) + margin.left, 
+          y: yScale(d.y) + margin.top 
+        });
         onPointClick?.(d);
       });
 
@@ -172,7 +190,7 @@ export function ScatterPlot({
     // Style domain lines
     g.selectAll('.domain').attr('stroke', '#e8e8e8');
 
-  }, [points, clusters, bounds, width, height, selectedPointId, onPointHover, onPointClick]);
+  }, [points, clusters, bounds, width, height, selectedPointId, onPointHover, onPointClick, displayNames]);
 
   return (
     <motion.div
@@ -189,12 +207,12 @@ export function ScatterPlot({
       />
 
       {/* Tooltip - drafted.ai style */}
-      {hoveredPoint && (
+      {hoveredPoint && !clickedPoint && (
         <div
-          className="absolute pointer-events-none bg-drafted-black text-white text-xs px-3 py-2 rounded-drafted shadow-drafted-lg transform -translate-x-1/2 -translate-y-full"
+          className="absolute pointer-events-none bg-drafted-black text-white text-xs px-3 py-2 rounded-drafted shadow-drafted-lg transform -translate-x-1/2 -translate-y-full z-10"
           style={{ left: tooltipPos.x, top: tooltipPos.y - 8 }}
         >
-          <div className="font-medium">{hoveredPoint.label}</div>
+          <div className="font-medium">{getDisplayName(hoveredPoint)}</div>
           <div className="text-drafted-muted mt-0.5 flex items-center gap-1.5">
             <span 
               className="w-2 h-2 rounded-full"
@@ -207,6 +225,62 @@ export function ScatterPlot({
           />
         </div>
       )}
+
+      {/* Thumbnail popup on click */}
+      <AnimatePresence>
+        {clickedPoint && (
+          <>
+            {/* Backdrop to close */}
+            <div 
+              className="fixed inset-0 z-20"
+              onClick={() => setClickedPoint(null)}
+            />
+            
+            {/* Popup */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.15 }}
+              className="absolute z-30 bg-white rounded-drafted-lg shadow-drafted-lg overflow-hidden"
+              style={{ 
+                left: Math.min(popupPos.x, width - 180), 
+                top: Math.max(popupPos.y - 200, 10),
+                width: 160
+              }}
+            >
+              {/* Thumbnail */}
+              {thumbnails[clickedPoint.id] ? (
+                <img
+                  src={thumbnails[clickedPoint.id]}
+                  alt={getDisplayName(clickedPoint)}
+                  className="w-full h-32 object-contain bg-drafted-bg"
+                />
+              ) : (
+                <div className="w-full h-32 bg-drafted-bg flex items-center justify-center">
+                  <span className="text-drafted-muted text-xs">No preview</span>
+                </div>
+              )}
+              
+              {/* Info */}
+              <div className="p-3">
+                <p className="text-sm font-semibold text-drafted-black truncate">
+                  {getDisplayName(clickedPoint)}
+                </p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span 
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: getClusterColor(clickedPoint.cluster) }}
+                  />
+                  <span className="text-xs text-drafted-gray">
+                    Cluster {clickedPoint.cluster + 1}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
