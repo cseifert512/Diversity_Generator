@@ -52,6 +52,7 @@ module.exports = {
       fontFamily: {
         sans: ['DM Sans', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
         display: ['Sora', 'DM Sans', 'system-ui', 'sans-serif'],
+        serif: ['Libre Baskerville', 'Georgia', 'Times New Roman', 'serif'],
       },
       boxShadow: {
         'drafted': '0 2px 8px rgba(0, 0, 0, 0.04)',

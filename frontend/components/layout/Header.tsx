@@ -8,12 +8,12 @@ export function Header() {
     <header className="bg-drafted-cream border-b border-drafted-border sticky top-0 z-50">
       <div className="max-w-[1800px] mx-auto px-6">
         <div className="flex items-center justify-between h-14">
-          {/* Logo - matching Drafted style */}
+          {/* Logo - matching Drafted style with serif font */}
           <Link href="/" className="flex items-center gap-0.5">
-            <span className="font-display text-xl font-semibold text-drafted-black tracking-tight">
+            <span className="font-serif text-xl font-bold text-drafted-black tracking-tight">
               Drafted
             </span>
-            <span className="text-coral-500 text-xl">.</span>
+            <span className="text-coral-500 text-xl font-serif font-bold">.</span>
           </Link>
 
           {/* Center nav */}
@@ -52,7 +52,7 @@ export function Header() {
               href="https://drafted.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-drafted-primary"
+              className="btn-drafted-primary font-serif font-bold"
             >
               Start Drafting
             </a>
