@@ -38,11 +38,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      # Set this manually in Render dashboard to your backend URL
+      # e.g., https://drafted-diversity-api.onrender.com
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: drafted-diversity-api
-          type: web
-          property: host
+        sync: false
     healthCheckPath: /
     autoDeploy: true
 
