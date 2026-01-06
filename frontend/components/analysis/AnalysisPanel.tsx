@@ -23,7 +23,7 @@ export function AnalysisPanel({ result }: AnalysisPanelProps) {
       {/* Header */}
       <div className="px-6 py-4 border-b border-drafted-border bg-drafted-bg/50">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-drafted-black">Diversity Analysis</h3>
+          <h3 className="text-lg font-serif font-bold text-drafted-black">Diversity Analysis</h3>
           <div className="flex items-center gap-4 text-sm text-drafted-gray">
             <span className="flex items-center gap-1.5">
               <Layers className="w-4 h-4" />
@@ -146,7 +146,7 @@ export function AnalysisPanel({ result }: AnalysisPanelProps) {
             <div className="bg-drafted-bg rounded-drafted-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h4 className="font-semibold text-drafted-black">Design Space Map</h4>
+                  <h4 className="font-serif font-bold text-drafted-black">Design Space Map</h4>
                   <p className="text-sm text-drafted-gray mt-0.5">
                     Each point represents a floor plan positioned by its features
                   </p>
@@ -166,7 +166,7 @@ export function AnalysisPanel({ result }: AnalysisPanelProps) {
 
             {/* Insights */}
             <div className="mt-4 p-4 bg-drafted-bg rounded-drafted-lg">
-              <h4 className="font-medium text-drafted-black mb-3">Key Insights</h4>
+              <h4 className="font-serif font-bold text-drafted-black mb-3">Key Insights</h4>
               <div className="grid grid-cols-2 gap-4">
                 <InsightCard
                   title="Spread"

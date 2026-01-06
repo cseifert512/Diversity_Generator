@@ -32,7 +32,7 @@ export default function HowItWorks() {
               <ArrowLeft className="w-4 h-4" />
               Back to Analyzer
             </Link>
-            <span className="font-display text-lg font-semibold text-drafted-black">
+            <span className="font-serif text-lg font-bold text-drafted-black">
               How It Works
             </span>
             <div className="w-24" /> {/* Spacer */}
@@ -47,7 +47,7 @@ export default function HowItWorks() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-16"
         >
-          <h1 className="text-4xl font-display font-bold text-drafted-black mb-4">
+          <h1 className="text-4xl font-serif font-bold text-drafted-black mb-4">
             Understanding Diversity Analysis
           </h1>
           <p className="text-lg text-drafted-gray max-w-2xl mx-auto">
@@ -68,7 +68,7 @@ export default function HowItWorks() {
               <div className="w-10 h-10 bg-coral-100 rounded-drafted flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-coral-500" />
               </div>
-              <h2 className="text-2xl font-semibold text-drafted-black">The Simple Version</h2>
+              <h2 className="text-2xl font-serif font-bold text-drafted-black">The Simple Version</h2>
             </div>
 
             <div className="space-y-6 text-drafted-gray">
@@ -122,7 +122,7 @@ export default function HowItWorks() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <h2 className="text-2xl font-semibold text-drafted-black mb-6">What We Analyze</h2>
+            <h2 className="text-2xl font-serif font-bold text-drafted-black mb-6">What We Analyze</h2>
             
             <div className="grid md:grid-cols-2 gap-6">
               <FeatureCard
@@ -161,7 +161,7 @@ export default function HowItWorks() {
               <div className="w-10 h-10 bg-drafted-bg rounded-drafted flex items-center justify-center">
                 <BarChart3 className="w-5 h-5 text-drafted-gray" />
               </div>
-              <h2 className="text-2xl font-semibold text-drafted-black">Reading the Scatter Plot</h2>
+              <h2 className="text-2xl font-serif font-bold text-drafted-black">Reading the Scatter Plot</h2>
             </div>
 
             <div className="space-y-4 text-drafted-gray">
@@ -215,7 +215,7 @@ export default function HowItWorks() {
                   <Code className="w-5 h-5 text-drafted-gray" />
                 </div>
                 <div className="text-left">
-                  <h2 className="text-xl font-semibold text-drafted-black">Technical Details</h2>
+                  <h2 className="text-xl font-serif font-bold text-drafted-black">Technical Details</h2>
                   <p className="text-sm text-drafted-gray">For developers and the technically curious</p>
                 </div>
               </div>

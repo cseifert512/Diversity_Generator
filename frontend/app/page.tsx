@@ -191,7 +191,7 @@ export default function Home() {
           {/* Top Bar */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-drafted-border">
             <div className="flex items-center gap-4">
-              <h1 className="text-lg font-semibold text-drafted-black">
+              <h1 className="text-lg font-serif font-bold text-drafted-black">
                 {mode === 'generate' ? 'Generated Drafts' : 'Uploaded Plans'}
               </h1>
               {hasPlans && (
@@ -272,7 +272,7 @@ export default function Home() {
               <div className="w-20 h-20 bg-drafted-bg rounded-full flex items-center justify-center mb-4">
                 <Layers className="w-10 h-10 text-drafted-muted" />
               </div>
-              <h2 className="text-xl font-semibold text-drafted-black mb-2">
+              <h2 className="text-xl font-serif font-bold text-drafted-black mb-2">
                 {mode === 'generate' ? 'Generate Your First Drafts' : 'Upload Floor Plans'}
               </h2>
               <p className="text-drafted-gray text-center max-w-md">
@@ -307,7 +307,7 @@ export default function Home() {
                     
                     {/* Content */}
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-drafted-black mb-1">
+                      <h3 className="text-lg font-serif font-bold text-drafted-black mb-1">
                         Generating Diversity Report
                       </h3>
                       <p className="text-sm text-drafted-gray mb-3">
