@@ -21,6 +21,8 @@ import { DraftGrid } from '@/components/drafts/DraftGrid';
 import { AnalysisPanel } from '@/components/analysis/AnalysisPanel';
 import { DropZone } from '@/components/upload/DropZone';
 import { EditPlanModal } from '@/components/EditPlanModal';
+import { PlanDetailPanel } from '@/components/PlanDetailPanel';
+import { CircularProgress, InlineProgress } from '@/components/CircularProgress';
 import { useAnalysis } from '@/hooks/useAnalysis';
 import { useGeneration } from '@/hooks/useGeneration';
 
@@ -30,6 +32,7 @@ export default function Home() {
   const [mode, setMode] = useState<AppMode>('generate');
   const [showAnalysis, setShowAnalysis] = useState(true);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
   // Upload flow
   const {
@@ -53,12 +56,15 @@ export default function Home() {
     thumbnails: genThumbnails,
     stylizedThumbnails: genStylizedThumbnails,
     error: genError,
+    progress: genProgress,
     isGenerating,
     isAnalyzing,
     isEditing,
     hasResults,
     analysisResult: genAnalysisResult,
     handleGenerate,
+    handleGenerateStreaming,
+    cancelGeneration,
     handleEditPlan,
     handleRenamePlan,
     resetGeneration,
@@ -74,11 +80,30 @@ export default function Home() {
   
   // Find the plan being edited
   const editingPlan = editingPlanId ? currentPlans.find(p => p.id === editingPlanId) : null;
+  
+  // Find the selected plan for the detail panel
+  const selectedPlan = selectedPlanId ? currentPlans.find(p => p.id === selectedPlanId) : null;
 
   const handleReset = () => {
     resetAnalysis();
     resetGeneration();
     setEditingPlanId(null);
+    setSelectedPlanId(null);
+  };
+  
+  const handleSelectPlan = (planId: string) => {
+    setSelectedPlanId(planId);
+  };
+  
+  const handleCloseDetail = () => {
+    setSelectedPlanId(null);
+  };
+  
+  const handleEditFromDetail = () => {
+    if (selectedPlanId) {
+      setEditingPlanId(selectedPlanId);
+      setSelectedPlanId(null);
+    }
   };
   
   const handleOpenEdit = (planId: string) => {
@@ -136,8 +161,9 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto">
             {mode === 'generate' ? (
               <GenerationSidebar 
-                onGenerate={handleGenerate}
+                onGenerate={handleGenerateStreaming}
                 isGenerating={isGenerating}
+                onCancel={cancelGeneration}
               />
             ) : (
               <div className="p-4">
@@ -175,8 +201,13 @@ export default function Home() {
             )}
           </div>
 
-          {/* Sidebar Footer - Diversity Score Preview or Analyzing State */}
-          {isAnalyzing && (
+          {/* Sidebar Footer - Progress or Diversity Score */}
+          {genProgress && mode === 'generate' && (
+            <div className="p-4 border-t border-drafted-border">
+              <InlineProgress progress={genProgress} />
+            </div>
+          )}
+          {isAnalyzing && !genProgress && (
             <div className="p-4 border-t border-drafted-border bg-gradient-to-r from-coral-50 to-white">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-5 h-5 border-2 border-coral-500 border-t-transparent rounded-full animate-spin" />
@@ -278,7 +309,27 @@ export default function Home() {
           </AnimatePresence>
 
           {/* Generation Progress - Only show when generating AND no plans yet */}
-          {isGenerating && !hasPlans && (
+          {isGenerating && !hasPlans && genProgress && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-24"
+            >
+              <CircularProgress progress={genProgress} size={140} strokeWidth={10} />
+              <p className="mt-6 text-sm text-drafted-light">
+                {genProgress.phase === 'generating' ? 'Creating diverse floor plans...' : 
+                 genProgress.phase === 'stylizing' ? 'Rendering architectural views...' :
+                 'Finalizing...'}
+              </p>
+              <button
+                onClick={cancelGeneration}
+                className="mt-4 text-sm text-drafted-gray hover:text-coral-500 transition-colors"
+              >
+                Cancel
+              </button>
+            </motion.div>
+          )}
+          {isGenerating && !hasPlans && !genProgress && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -386,6 +437,7 @@ export default function Home() {
                 onRemove={mode === 'upload' ? handleRemovePlan : undefined}
                 onEdit={mode === 'generate' ? handleOpenEdit : undefined}
                 onRename={mode === 'generate' ? handleRenamePlan : undefined}
+                onSelect={handleSelectPlan}
                 showStylized={true}
               />
             </div>
@@ -400,6 +452,17 @@ export default function Home() {
         onSubmit={handleSubmitEdit}
         planName={editingPlan?.display_name}
         isLoading={isEditing}
+      />
+      
+      {/* Plan Detail Panel */}
+      <PlanDetailPanel
+        plan={selectedPlan || null}
+        thumbnail={selectedPlanId ? currentThumbnails[selectedPlanId] : undefined}
+        stylizedThumbnail={selectedPlanId ? currentStylizedThumbnails[selectedPlanId] : undefined}
+        onClose={handleCloseDetail}
+        onEdit={handleEditFromDetail}
+        onRename={handleRenamePlan}
+        isOpen={selectedPlanId !== null}
       />
     </div>
   );

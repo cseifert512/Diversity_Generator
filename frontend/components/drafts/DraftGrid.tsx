@@ -12,6 +12,7 @@ interface DraftGridProps {
   onRemove?: (planId: string) => void;
   onEdit?: (planId: string) => void;
   onRename?: (planId: string, newName: string) => Promise<boolean>;
+  onSelect?: (planId: string) => void;  // For opening detail panel
   showStylized?: boolean;  // Default to true - show stylized version for display
 }
 
@@ -21,6 +22,7 @@ export function DraftGrid({
   onRemove, 
   onEdit,
   onRename,
+  onSelect,
   showStylized = true 
 }: DraftGridProps) {
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
@@ -144,8 +146,11 @@ export function DraftGrid({
                 )}
               </div>
 
-              {/* Floor Plan Image */}
-              <div className="aspect-square bg-drafted-bg relative overflow-hidden">
+              {/* Floor Plan Image - Clickable */}
+              <div 
+                className={`aspect-square bg-drafted-bg relative overflow-hidden ${onSelect ? 'cursor-pointer' : ''}`}
+                onClick={() => onSelect?.(plan.id)}
+              >
                 {displayImage ? (
                   <img
                     src={displayImage}

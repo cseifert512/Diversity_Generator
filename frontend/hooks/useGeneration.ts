@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { 
   GenerationRequest, 
   GenerationResponse,
@@ -9,7 +9,7 @@ import type {
   GenerationState,
   EditPlanResponse
 } from '@/lib/types';
-import { generateFloorPlans, analyzePlans, getPlanThumbnail, editPlan, renamePlan } from '@/lib/api';
+import { generateFloorPlans, generateFloorPlansStreaming, analyzePlans, getPlanThumbnail, editPlan, renamePlan, StreamProgress } from '@/lib/api';
 
 const STORAGE_KEY = 'drafted_generation_state';
 
@@ -22,6 +22,13 @@ interface PersistedState {
   analysisResult: AnalysisResponse | null;
 }
 
+export interface GenerationProgress {
+  phase: 'generating' | 'stylizing' | 'analyzing' | 'complete';
+  completed: number;
+  total: number;
+  percentage: number;
+}
+
 interface UseGenerationReturn {
   // State
   generationState: GenerationState;
@@ -30,6 +37,7 @@ interface UseGenerationReturn {
   thumbnails: Record<string, string>;  // Colored thumbnails (for analysis)
   stylizedThumbnails: Record<string, string>;  // Stylized thumbnails (for display)
   error: string | null;
+  progress: GenerationProgress | null;  // Real-time progress
   
   // Derived state
   isGenerating: boolean;
@@ -40,6 +48,8 @@ interface UseGenerationReturn {
   
   // Actions
   handleGenerate: (request: GenerationRequest) => Promise<void>;
+  handleGenerateStreaming: (request: GenerationRequest) => void;
+  cancelGeneration: () => void;
   handleEditPlan: (planId: string, instruction: string) => Promise<EditPlanResponse | null>;
   handleRenamePlan: (planId: string, newName: string) => Promise<boolean>;
   resetGeneration: () => void;
@@ -56,6 +66,10 @@ export function useGeneration(): UseGenerationReturn {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResponse | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [progress, setProgress] = useState<GenerationProgress | null>(null);
+  
+  // Reference to cancel streaming
+  const streamCancelRef = useRef<(() => void) | null>(null);
 
   // Restore state from sessionStorage on mount
   useEffect(() => {
@@ -178,6 +192,105 @@ export function useGeneration(): UseGenerationReturn {
     }
   }, []);
 
+  // Streaming generation with real-time progress
+  const handleGenerateStreaming = useCallback((request: GenerationRequest) => {
+    setGenerationState('generating');
+    setError(null);
+    setGenerationResult(null);
+    setPlans([]);
+    setThumbnails({});
+    setStylizedThumbnails({});
+    setAnalysisResult(null);
+    setProgress({ phase: 'generating', completed: 0, total: request.count, percentage: 0 });
+    
+    const receivedPlanIds: string[] = [];
+    
+    const { cancel, promise } = generateFloorPlansStreaming(request, (streamProgress: StreamProgress) => {
+      // Update progress state
+      if (streamProgress.phase === 'generating') {
+        setProgress({
+          phase: 'generating',
+          completed: streamProgress.completed,
+          total: streamProgress.total,
+          percentage: Math.round((streamProgress.completed / streamProgress.total) * 50), // 0-50%
+        });
+      } else if (streamProgress.phase === 'stylizing') {
+        setProgress({
+          phase: 'stylizing',
+          completed: streamProgress.completed,
+          total: streamProgress.total,
+          percentage: 50 + Math.round((streamProgress.completed / streamProgress.total) * 40), // 50-90%
+        });
+        
+        // Add plan as it arrives
+        if (streamProgress.plan) {
+          const newPlan: UploadedPlan = {
+            id: streamProgress.plan.plan_id,
+            filename: `${streamProgress.plan.variation_type}_${streamProgress.plan.plan_id}.png`,
+            thumbnail: streamProgress.plan.thumbnail,
+            stylized_thumbnail: streamProgress.plan.stylized_thumbnail,
+            display_name: streamProgress.plan.display_name,
+          };
+          
+          setPlans(prev => [...prev, newPlan]);
+          receivedPlanIds.push(streamProgress.plan.plan_id);
+          
+          if (streamProgress.plan.thumbnail) {
+            setThumbnails(prev => ({ ...prev, [streamProgress.plan!.plan_id]: streamProgress.plan!.thumbnail! }));
+          }
+          if (streamProgress.plan.stylized_thumbnail) {
+            setStylizedThumbnails(prev => ({ ...prev, [streamProgress.plan!.plan_id]: streamProgress.plan!.stylized_thumbnail! }));
+          }
+        }
+      } else if (streamProgress.phase === 'complete') {
+        setProgress({
+          phase: 'complete',
+          completed: streamProgress.generated_count || 0,
+          total: streamProgress.generated_count || 0,
+          percentage: 100,
+        });
+      }
+    });
+    
+    streamCancelRef.current = cancel;
+    
+    // Handle completion and run analysis
+    promise
+      .then(async () => {
+        // Run analysis after streaming completes
+        if (receivedPlanIds.length >= 2) {
+          setGenerationState('analyzing');
+          setProgress({ phase: 'analyzing', completed: 0, total: 1, percentage: 95 });
+          
+          try {
+            const analysis = await analyzePlans(receivedPlanIds);
+            setAnalysisResult(analysis);
+          } catch (analysisError) {
+            console.error('Analysis failed:', analysisError);
+          }
+        }
+        
+        setGenerationState('complete');
+        setProgress(null);
+        streamCancelRef.current = null;
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : 'Generation failed');
+        setGenerationState('error');
+        setProgress(null);
+        streamCancelRef.current = null;
+      });
+  }, []);
+
+  const cancelGeneration = useCallback(() => {
+    if (streamCancelRef.current) {
+      streamCancelRef.current();
+      streamCancelRef.current = null;
+      setGenerationState('idle');
+      setProgress(null);
+    }
+  }, []);
+
   const handleEditPlan = useCallback(async (planId: string, instruction: string): Promise<EditPlanResponse | null> => {
     setIsEditing(true);
     
@@ -255,12 +368,15 @@ export function useGeneration(): UseGenerationReturn {
     thumbnails,
     stylizedThumbnails,
     error,
+    progress,
     isGenerating: generationState === 'generating',
     isAnalyzing: generationState === 'analyzing',
     isEditing,
     hasResults: (generationState === 'complete' || generationState === 'analyzing') && plans.length > 0,
     analysisResult,
     handleGenerate,
+    handleGenerateStreaming,
+    cancelGeneration,
     handleEditPlan,
     handleRenamePlan,
     resetGeneration,

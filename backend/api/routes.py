@@ -640,6 +640,166 @@ async def generate_single_plan(
 
 
 # =============================================================================
+# STREAMING GENERATION ENDPOINT
+# =============================================================================
+
+@router.get("/generate/stream")
+async def generate_stream(
+    request: Request,
+    bedrooms: int = 3,
+    bathrooms: int = 2,
+    sqft: int = 2000,
+    style: str = "modern",
+    count: int = 6
+):
+    """
+    Generate floor plans with real-time progress streaming via SSE.
+    
+    Streams progress updates as each plan is generated and stylized.
+    Client should use EventSource to connect to this endpoint.
+    """
+    # Import generation modules
+    try:
+        from generation import GeminiFloorPlanGenerator, GenerationConfig
+    except ImportError as e:
+        async def error_stream():
+            yield f"data: {json.dumps({'error': f'Generation module not available: {e}'})}\n\n"
+        return StreamingResponse(error_stream(), media_type="text/event-stream")
+    
+    if not os.getenv("GEMINI_API_KEY"):
+        async def error_stream():
+            yield f"data: {json.dumps({'error': 'GEMINI_API_KEY not set'})}\n\n"
+        return StreamingResponse(error_stream(), media_type="text/event-stream")
+    
+    # Initialize generator and config
+    generator = GeminiFloorPlanGenerator()
+    config = GenerationConfig(
+        bedrooms=bedrooms,
+        bathrooms=bathrooms,
+        sqft=sqft,
+        style=style
+    )
+    
+    async def event_generator():
+        generated_plans = []
+        
+        # Phase 1: Generate plans
+        semaphore = asyncio.Semaphore(3)
+        plan_results = []
+        completed = 0
+        
+        # Yield initial status
+        yield f"data: {json.dumps({'phase': 'generating', 'completed': 0, 'total': count})}\n\n"
+        
+        async def generate_one(index: int):
+            nonlocal completed
+            async with semaphore:
+                plan_id = f"gen_{uuid.uuid4().hex[:8]}"
+                result = await generator.generate_single(config, variation_index=index, plan_id=plan_id)
+                return result
+        
+        # Create and execute tasks
+        tasks = [asyncio.create_task(generate_one(i)) for i in range(count)]
+        
+        for task in asyncio.as_completed(tasks):
+            try:
+                result = await task
+                plan_results.append(result)
+                completed += 1
+                
+                plan_info = None
+                if result.success:
+                    plan_info = {
+                        "plan_id": result.plan_id,
+                        "variation_type": result.variation_type
+                    }
+                
+                yield f"data: {json.dumps({'phase': 'generating', 'completed': completed, 'total': count, 'plan': plan_info})}\n\n"
+                
+                # Check if client disconnected
+                if await request.is_disconnected():
+                    return
+                    
+            except Exception as e:
+                print(f"[ERR] Generation task failed: {e}")
+                completed += 1
+                yield f"data: {json.dumps({'phase': 'generating', 'completed': completed, 'total': count, 'error': str(e)})}\n\n"
+        
+        # Phase 2: Stylize plans
+        successful_plans = [r for r in plan_results if r.success and r.image_data]
+        stylize_total = len(successful_plans)
+        stylize_completed = 0
+        
+        yield f"data: {json.dumps({'phase': 'stylizing', 'completed': 0, 'total': stylize_total})}\n\n"
+        
+        for plan in successful_plans:
+            if await request.is_disconnected():
+                return
+            
+            stylized_data = None
+            display_name = None
+            
+            try:
+                stylized_data = await generator.stylize_plan(plan.image_data)
+            except Exception as e:
+                print(f"[ERR] Stylization failed: {e}")
+            
+            try:
+                display_name = await generator.generate_plan_name(plan.image_data)
+            except Exception:
+                display_name = f"{plan.variation_type.replace('_', ' ').title()} Layout"
+            
+            # Store in memory
+            from utils import resize_image
+            thumbnail_b64 = None
+            stylized_thumbnail_b64 = None
+            
+            try:
+                image = load_image_from_bytes(plan.image_data)
+                thumb = resize_image(image, max_size=256)
+                thumbnail_b64 = f"data:image/png;base64,{encode_image_to_base64(thumb)}"
+            except Exception:
+                pass
+            
+            if stylized_data:
+                try:
+                    stylized_image = load_image_from_bytes(stylized_data)
+                    stylized_thumb = resize_image(stylized_image, max_size=256)
+                    stylized_thumbnail_b64 = f"data:image/png;base64,{encode_image_to_base64(stylized_thumb)}"
+                except Exception:
+                    pass
+            
+            uploaded_plans[plan.plan_id] = {
+                "id": plan.plan_id,
+                "filename": f"{plan.variation_type}_{plan.plan_id}.png",
+                "content": plan.image_data,
+                "stylized_content": stylized_data,
+                "display_name": display_name,
+                "content_type": "image/png",
+                "generated": True,
+                "variation_type": plan.variation_type,
+            }
+            
+            stylize_completed += 1
+            
+            yield f"data: {json.dumps({'phase': 'stylizing', 'completed': stylize_completed, 'total': stylize_total, 'plan': {'plan_id': plan.plan_id, 'variation_type': plan.variation_type, 'display_name': display_name, 'thumbnail': thumbnail_b64, 'stylized_thumbnail': stylized_thumbnail_b64}})}\n\n"
+        
+        # Phase 3: Complete
+        plan_ids = [p.plan_id for p in successful_plans]
+        yield f"data: {json.dumps({'phase': 'complete', 'plan_ids': plan_ids, 'generated_count': len(successful_plans), 'failed_count': count - len(successful_plans)})}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+# =============================================================================
 # EDIT, RENAME, AND STYLIZED ENDPOINTS
 # =============================================================================
 

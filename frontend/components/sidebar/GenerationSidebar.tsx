@@ -16,6 +16,7 @@ import type { GenerationRequest } from '@/lib/types';
 interface GenerationSidebarProps {
   onGenerate: (request: GenerationRequest) => void;
   isGenerating: boolean;
+  onCancel?: () => void;
 }
 
 const STYLES = [
@@ -38,7 +39,7 @@ const ADDITIONAL_ROOMS = [
   { id: 'gym', name: 'Gym', icon: '🏋️' },
 ];
 
-export function GenerationSidebar({ onGenerate, isGenerating }: GenerationSidebarProps) {
+export function GenerationSidebar({ onGenerate, isGenerating, onCancel }: GenerationSidebarProps) {
   const [bedrooms, setBedrooms] = useState(3);
   const [bathrooms, setBathrooms] = useState(2);
   const [sqft, setSqft] = useState(2000);
@@ -278,23 +279,22 @@ export function GenerationSidebar({ onGenerate, isGenerating }: GenerationSideba
 
       {/* Generate Button - Fixed at bottom */}
       <div className="p-4 border-t border-drafted-border bg-white">
-        <button
-          onClick={handleSubmit}
-          disabled={isGenerating}
-          className="w-full btn-drafted-coral py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {isGenerating ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Generating...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-5 h-5" />
-              Draft
-            </>
-          )}
-        </button>
+        {isGenerating ? (
+          <button
+            onClick={onCancel}
+            className="w-full btn-drafted-outline py-3 text-base flex items-center justify-center gap-2 border-coral-300 text-coral-600 hover:bg-coral-50"
+          >
+            Cancel Generation
+          </button>
+        ) : (
+          <button
+            onClick={handleSubmit}
+            className="w-full btn-drafted-coral py-3 text-base flex items-center justify-center gap-2"
+          >
+            <Sparkles className="w-5 h-5" />
+            Draft
+          </button>
+        )}
       </div>
     </div>
   );

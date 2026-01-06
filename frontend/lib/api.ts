@@ -293,3 +293,94 @@ export async function getStylizedThumbnail(planId: string): Promise<{
   return response.json();
 }
 
+// =============================================================================
+// STREAMING GENERATION API
+// =============================================================================
+
+export interface StreamProgress {
+  phase: 'generating' | 'stylizing' | 'complete';
+  completed: number;
+  total: number;
+  plan?: {
+    plan_id: string;
+    variation_type: string;
+    display_name?: string;
+    thumbnail?: string;
+    stylized_thumbnail?: string;
+  };
+  plan_ids?: string[];
+  generated_count?: number;
+  failed_count?: number;
+  error?: string;
+}
+
+/**
+ * Generate floor plans with streaming progress updates via SSE.
+ * 
+ * @param request - Generation parameters
+ * @param onProgress - Callback called for each progress update
+ * @returns Promise that resolves when generation is complete
+ */
+export function generateFloorPlansStreaming(
+  request: GenerationRequest,
+  onProgress: (progress: StreamProgress) => void
+): { cancel: () => void; promise: Promise<void> } {
+  const params = new URLSearchParams({
+    bedrooms: request.bedrooms.toString(),
+    bathrooms: request.bathrooms.toString(),
+    sqft: request.sqft.toString(),
+    style: request.style,
+    count: request.count.toString(),
+  });
+
+  const url = `${BACKEND_DIRECT}/api/generate/stream?${params}`;
+  console.log('Starting SSE stream:', url);
+  
+  const eventSource = new EventSource(url);
+  let resolved = false;
+
+  const promise = new Promise<void>((resolve, reject) => {
+    eventSource.onmessage = (event) => {
+      try {
+        const data: StreamProgress = JSON.parse(event.data);
+        console.log('SSE progress:', data);
+        onProgress(data);
+        
+        if (data.phase === 'complete') {
+          resolved = true;
+          eventSource.close();
+          resolve();
+        }
+        
+        if (data.error && !data.plan) {
+          // Fatal error
+          resolved = true;
+          eventSource.close();
+          reject(new Error(data.error));
+        }
+      } catch (e) {
+        console.error('Failed to parse SSE data:', e);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE error:', error);
+      if (!resolved) {
+        resolved = true;
+        eventSource.close();
+        reject(new Error('Connection to generation stream failed'));
+      }
+    };
+  });
+
+  return {
+    cancel: () => {
+      if (!resolved) {
+        resolved = true;
+        eventSource.close();
+      }
+    },
+    promise,
+  };
+}
+
