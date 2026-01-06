@@ -23,7 +23,7 @@ export function GenerationProgress({
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="card p-8 text-center"
+      className="card-drafted p-8 text-center"
     >
       {/* Animated icon */}
       <div className="flex justify-center mb-6">
@@ -40,21 +40,21 @@ export function GenerationProgress({
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-              className="w-16 h-16 rounded-full border-4 border-primary-100 border-t-primary-500"
+              className="w-16 h-16 rounded-full border-4 border-coral-100 border-t-coral-500"
             />
-            <Sparkles className="w-6 h-6 text-primary-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            <Sparkles className="w-6 h-6 text-coral-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
           </div>
         )}
       </div>
 
       {/* Status text */}
-      <h3 className="text-xl font-bold text-neutral-900 mb-2">
+      <h3 className="text-xl font-bold text-drafted-black mb-2">
         {isComplete 
           ? 'Generation Complete!' 
           : 'Generating Floor Plans...'}
       </h3>
       
-      <p className="text-neutral-500 mb-6">
+      <p className="text-drafted-gray mb-6">
         {isComplete 
           ? `Successfully generated ${successful} of ${total} plans`
           : `Creating diverse layouts with AI...`}
@@ -62,9 +62,9 @@ export function GenerationProgress({
 
       {/* Progress bar */}
       <div className="max-w-xs mx-auto">
-        <div className="h-2 bg-neutral-100 rounded-full overflow-hidden mb-3">
+        <div className="h-2 bg-drafted-border rounded-full overflow-hidden mb-3">
           <motion.div
-            className="h-full bg-primary-500 rounded-full"
+            className="h-full bg-coral-500 rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.5 }}
@@ -75,12 +75,12 @@ export function GenerationProgress({
         <div className="flex justify-center gap-4 text-sm">
           <div className="flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-green-500" />
-            <span className="text-neutral-600">{successful} generated</span>
+            <span className="text-drafted-gray">{successful} generated</span>
           </div>
           {failed > 0 && (
             <div className="flex items-center gap-1.5">
-              <XCircle className="w-4 h-4 text-red-500" />
-              <span className="text-neutral-600">{failed} failed</span>
+              <XCircle className="w-4 h-4 text-coral-500" />
+              <span className="text-drafted-gray">{failed} failed</span>
             </div>
           )}
         </div>
@@ -96,8 +96,8 @@ export function GenerationProgress({
                 i < completed 
                   ? 'bg-green-500' 
                   : i < completed + failed 
-                    ? 'bg-red-400'
-                    : 'bg-neutral-200'
+                    ? 'bg-coral-400'
+                    : 'bg-drafted-border'
               }`}
               initial={{ scale: 0.5, opacity: 0.5 }}
               animate={{ 
@@ -114,4 +114,3 @@ export function GenerationProgress({
     </motion.div>
   );
 }
-

@@ -11,9 +11,11 @@ import type {
   GenerationOptions,
 } from './types';
 
-// Use direct backend URL for long-running requests to avoid Next.js proxy timeout
+// API URL configuration
+// In production: use NEXT_PUBLIC_API_URL (e.g., https://drafted-diversity-api.onrender.com)
+// In development: use localhost directly to avoid Next.js proxy timeout issues
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-const BACKEND_DIRECT = 'http://localhost:8000';
+const BACKEND_DIRECT = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 /**
  * Upload floor plan images to the backend

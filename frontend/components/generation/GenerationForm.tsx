@@ -72,15 +72,15 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       onSubmit={handleSubmit}
-      className="card p-8"
+      className="card-drafted p-8"
     >
       <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
-          <Sparkles className="w-5 h-5 text-primary-500" />
+        <div className="w-10 h-10 bg-coral-100 rounded-drafted flex items-center justify-center">
+          <Sparkles className="w-5 h-5 text-coral-500" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-neutral-900">Generate Floor Plans</h2>
-          <p className="text-sm text-neutral-500">AI-powered diverse design exploration</p>
+          <h2 className="text-xl font-bold text-drafted-black">Generate Floor Plans</h2>
+          <p className="text-sm text-drafted-gray">AI-powered diverse design exploration</p>
         </div>
       </div>
 
@@ -89,7 +89,7 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
         <div className="grid grid-cols-2 gap-6">
           {/* Bedrooms */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 mb-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-drafted-gray mb-3">
               <Home className="w-4 h-4" />
               Bedrooms
             </label>
@@ -100,10 +100,10 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
                   type="button"
                   onClick={() => setBedrooms(num)}
                   className={`
-                    flex-1 py-2.5 rounded-xl text-sm font-medium transition-all
+                    flex-1 py-2.5 rounded-drafted text-sm font-medium transition-all
                     ${bedrooms === num 
-                      ? 'bg-primary-500 text-white shadow-sm' 
-                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'}
+                      ? 'bg-drafted-black text-white' 
+                      : 'bg-drafted-bg text-drafted-gray hover:bg-drafted-border'}
                   `}
                 >
                   {num}
@@ -114,7 +114,7 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
 
           {/* Bathrooms */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 mb-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-drafted-gray mb-3">
               <Bath className="w-4 h-4" />
               Bathrooms
             </label>
@@ -125,10 +125,10 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
                   type="button"
                   onClick={() => setBathrooms(num)}
                   className={`
-                    flex-1 py-2.5 rounded-xl text-sm font-medium transition-all
+                    flex-1 py-2.5 rounded-drafted text-sm font-medium transition-all
                     ${bathrooms === num 
-                      ? 'bg-primary-500 text-white shadow-sm' 
-                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'}
+                      ? 'bg-drafted-black text-white' 
+                      : 'bg-drafted-bg text-drafted-gray hover:bg-drafted-border'}
                   `}
                 >
                   {num}
@@ -140,12 +140,12 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
 
         {/* Square Footage */}
         <div>
-          <label className="flex items-center justify-between text-sm font-medium text-neutral-700 mb-3">
+          <label className="flex items-center justify-between text-sm font-medium text-drafted-gray mb-3">
             <span className="flex items-center gap-2">
               <Square className="w-4 h-4" />
               Square Footage
             </span>
-            <span className="text-primary-500 font-semibold">{sqft.toLocaleString()} sq ft</span>
+            <span className="text-coral-500 font-semibold">{sqft.toLocaleString()} sq ft</span>
           </label>
           <input
             type="range"
@@ -154,16 +154,9 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
             step={100}
             value={sqft}
             onChange={(e) => setSqft(Number(e.target.value))}
-            className="w-full h-2 bg-neutral-100 rounded-full appearance-none cursor-pointer
-                       [&::-webkit-slider-thumb]:appearance-none
-                       [&::-webkit-slider-thumb]:w-5
-                       [&::-webkit-slider-thumb]:h-5
-                       [&::-webkit-slider-thumb]:rounded-full
-                       [&::-webkit-slider-thumb]:bg-primary-500
-                       [&::-webkit-slider-thumb]:shadow-md
-                       [&::-webkit-slider-thumb]:cursor-pointer"
+            className="slider-drafted"
           />
-          <div className="flex justify-between text-xs text-neutral-400 mt-1">
+          <div className="flex justify-between text-xs text-drafted-light mt-1">
             <span>1,000</span>
             <span>3,000</span>
             <span>5,000</span>
@@ -172,7 +165,7 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
 
         {/* Style Selection */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 mb-3">
+          <label className="flex items-center gap-2 text-sm font-medium text-drafted-gray mb-3">
             <Palette className="w-4 h-4" />
             Architectural Style
           </label>
@@ -183,10 +176,10 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
                 type="button"
                 onClick={() => setStyle(s.id)}
                 className={`
-                  py-3 px-2 rounded-xl text-sm transition-all text-center
+                  py-3 px-2 rounded-drafted text-sm transition-all text-center
                   ${style === s.id 
-                    ? 'bg-primary-50 text-primary-600 ring-2 ring-primary-500' 
-                    : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'}
+                    ? 'bg-coral-50 text-coral-600 ring-2 ring-coral-500' 
+                    : 'bg-drafted-bg text-drafted-gray hover:bg-drafted-border'}
                 `}
               >
                 <span className="block text-lg mb-1">{s.icon}</span>
@@ -198,7 +191,7 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
 
         {/* Number of Plans */}
         <div>
-          <label className="text-sm font-medium text-neutral-700 mb-3 block">
+          <label className="text-sm font-medium text-drafted-gray mb-3 block">
             Number of Plans to Generate
           </label>
           <div className="flex gap-2">
@@ -208,10 +201,10 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
                 type="button"
                 onClick={() => setCount(num)}
                 className={`
-                  flex-1 py-2.5 rounded-xl text-sm font-medium transition-all
+                  flex-1 py-2.5 rounded-drafted text-sm font-medium transition-all
                   ${count === num 
-                    ? 'bg-primary-500 text-white shadow-sm' 
-                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'}
+                    ? 'bg-drafted-black text-white' 
+                    : 'bg-drafted-bg text-drafted-gray hover:bg-drafted-border'}
                 `}
               >
                 {num}
@@ -224,7 +217,7 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+          className="flex items-center gap-2 text-sm text-drafted-gray hover:text-drafted-black transition-colors"
         >
           <Plus className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-45' : ''}`} />
           {showAdvanced ? 'Hide' : 'Show'} additional rooms
@@ -237,7 +230,7 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <label className="text-sm font-medium text-neutral-700 mb-3 block">
+            <label className="text-sm font-medium text-drafted-gray mb-3 block">
               Additional Rooms (Optional)
             </label>
             <div className="flex flex-wrap gap-2">
@@ -249,8 +242,8 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
                   className={`
                     px-3 py-1.5 rounded-full text-sm transition-all
                     ${additionalRooms.includes(room.toLowerCase())
-                      ? 'bg-primary-100 text-primary-600 ring-1 ring-primary-300' 
-                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'}
+                      ? 'bg-coral-100 text-coral-600 ring-1 ring-coral-300' 
+                      : 'bg-drafted-bg text-drafted-gray hover:bg-drafted-border'}
                   `}
                 >
                   {room}
@@ -267,7 +260,7 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
         <button
           type="submit"
           disabled={isGenerating}
-          className="w-full btn-primary py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full btn-drafted-coral py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isGenerating ? (
             <span className="flex items-center justify-center gap-2">
@@ -282,11 +275,10 @@ export function GenerationForm({ onGenerate, isGenerating }: GenerationFormProps
           )}
         </button>
 
-        <p className="text-xs text-center text-neutral-400">
+        <p className="text-xs text-center text-drafted-light">
           Powered by Google Gemini • Each plan uses a different layout strategy
         </p>
       </div>
     </motion.form>
   );
 }
-
