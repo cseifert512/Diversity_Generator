@@ -91,14 +91,16 @@ export async function deleteAllPlans(): Promise<void> {
 
 /**
  * Run diversity analysis on uploaded plans
+ * Uses direct backend URL to avoid Next.js proxy issues
  */
 export async function analyzePlans(planIds?: string[]): Promise<AnalysisResponse> {
-  const response = await fetch(`${API_BASE}/api/analyze`, {
+  console.log('Analyzing plans:', planIds);
+  const response = await fetch(`${BACKEND_DIRECT}/api/analyze`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(planIds ? { plan_ids: planIds } : {}),
+    body: JSON.stringify({ plan_ids: planIds || [] }),
   });
 
   if (!response.ok) {
