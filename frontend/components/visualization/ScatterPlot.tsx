@@ -24,8 +24,8 @@ export function ScatterPlot({
   onPointHover,
   onPointClick,
   selectedPointId,
-  width = 600,
-  height = 400,
+  width = 500,
+  height = 320,
 }: ScatterPlotProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoveredPoint, setHoveredPoint] = useState<ScatterPoint | null>(null);
@@ -37,7 +37,7 @@ export function ScatterPlot({
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    const margin = { top: 20, right: 20, bottom: 40, left: 40 };
+    const margin = { top: 16, right: 16, bottom: 32, left: 32 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -54,7 +54,7 @@ export function ScatterPlot({
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // Add subtle grid
+    // Add subtle grid - drafted.ai style
     const xGrid = d3.axisBottom(xScale)
       .tickSize(-innerHeight)
       .tickFormat(() => '');
@@ -68,18 +68,20 @@ export function ScatterPlot({
       .attr('transform', `translate(0,${innerHeight})`)
       .call(xGrid)
       .selectAll('line')
-      .attr('stroke', '#f0f0f0');
+      .attr('stroke', '#f0f0f0')
+      .attr('stroke-dasharray', '2,2');
 
     g.append('g')
       .attr('class', 'grid')
       .call(yGrid)
       .selectAll('line')
-      .attr('stroke', '#f0f0f0');
+      .attr('stroke', '#f0f0f0')
+      .attr('stroke-dasharray', '2,2');
 
     // Remove domain lines from grid
     g.selectAll('.grid .domain').remove();
 
-    // Draw cluster hulls
+    // Draw cluster hulls with softer styling
     clusters.forEach(cluster => {
       const clusterPoints = points.filter(p => p.cluster === cluster.id);
       
@@ -91,17 +93,17 @@ export function ScatterPlot({
         if (hullPoints) {
           g.append('path')
             .datum(hullPoints)
-            .attr('d', d3.line().curve(d3.curveCardinalClosed.tension(0.5)))
-            .attr('fill', cluster.color)
-            .attr('fill-opacity', 0.08)
-            .attr('stroke', cluster.color)
-            .attr('stroke-opacity', 0.2)
-            .attr('stroke-width', 1);
+            .attr('d', d3.line().curve(d3.curveCardinalClosed.tension(0.6)))
+            .attr('fill', getClusterColor(cluster.id))
+            .attr('fill-opacity', 0.06)
+            .attr('stroke', getClusterColor(cluster.id))
+            .attr('stroke-opacity', 0.15)
+            .attr('stroke-width', 1.5);
         }
       }
     });
 
-    // Draw points
+    // Draw points with drafted.ai style
     const pointsGroup = g.selectAll('.point')
       .data(points)
       .enter()
@@ -110,18 +112,18 @@ export function ScatterPlot({
       .attr('transform', d => `translate(${xScale(d.x)},${yScale(d.y)})`)
       .style('cursor', 'pointer');
 
-    // Point circles
+    // Point circles - cleaner style
     pointsGroup.append('circle')
-      .attr('r', d => d.id === selectedPointId ? 10 : 7)
+      .attr('r', d => d.id === selectedPointId ? 9 : 6)
       .attr('fill', d => getClusterColor(d.cluster))
       .attr('stroke', '#fff')
       .attr('stroke-width', 2)
-      .style('filter', 'drop-shadow(0 1px 2px rgb(0 0 0 / 0.1))')
+      .style('filter', 'drop-shadow(0 1px 2px rgb(0 0 0 / 0.08))')
       .on('mouseenter', function(event, d) {
         d3.select(this)
           .transition()
-          .duration(150)
-          .attr('r', 10);
+          .duration(120)
+          .attr('r', 9);
         
         setHoveredPoint(d);
         setTooltipPos({ 
@@ -133,8 +135,8 @@ export function ScatterPlot({
       .on('mouseleave', function(event, d) {
         d3.select(this)
           .transition()
-          .duration(150)
-          .attr('r', d.id === selectedPointId ? 10 : 7);
+          .duration(120)
+          .attr('r', d.id === selectedPointId ? 9 : 6);
         
         setHoveredPoint(null);
         onPointHover?.(null);
@@ -143,50 +145,32 @@ export function ScatterPlot({
         onPointClick?.(d);
       });
 
-    // Add axes
+    // Minimal axes
     const xAxis = d3.axisBottom(xScale)
-      .ticks(5)
+      .ticks(4)
       .tickSize(0)
-      .tickPadding(10);
+      .tickPadding(8);
 
     const yAxis = d3.axisLeft(yScale)
-      .ticks(5)
+      .ticks(4)
       .tickSize(0)
-      .tickPadding(10);
+      .tickPadding(8);
 
     g.append('g')
       .attr('transform', `translate(0,${innerHeight})`)
       .call(xAxis)
       .selectAll('text')
-      .attr('fill', '#a3a3a3')
-      .attr('font-size', '11px');
+      .attr('fill', '#9a9a9a')
+      .attr('font-size', '10px');
 
     g.append('g')
       .call(yAxis)
       .selectAll('text')
-      .attr('fill', '#a3a3a3')
-      .attr('font-size', '11px');
+      .attr('fill', '#9a9a9a')
+      .attr('font-size', '10px');
 
-    // Remove axis domain lines
-    g.selectAll('.domain').attr('stroke', '#e5e5e5');
-
-    // Axis labels
-    g.append('text')
-      .attr('x', innerWidth / 2)
-      .attr('y', innerHeight + 35)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#737373')
-      .attr('font-size', '12px')
-      .text('Component 1');
-
-    g.append('text')
-      .attr('transform', 'rotate(-90)')
-      .attr('x', -innerHeight / 2)
-      .attr('y', -30)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#737373')
-      .attr('font-size', '12px')
-      .text('Component 2');
+    // Style domain lines
+    g.selectAll('.domain').attr('stroke', '#e8e8e8');
 
   }, [points, clusters, bounds, width, height, selectedPointId, onPointHover, onPointClick]);
 
@@ -194,50 +178,35 @@ export function ScatterPlot({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.4 }}
       className="relative"
     >
       <svg
         ref={svgRef}
         width={width}
         height={height}
-        className="bg-white rounded-xl"
+        className="bg-white"
       />
 
-      {/* Tooltip */}
+      {/* Tooltip - drafted.ai style */}
       {hoveredPoint && (
         <div
-          className="absolute pointer-events-none bg-neutral-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg transform -translate-x-1/2 -translate-y-full"
+          className="absolute pointer-events-none bg-drafted-black text-white text-xs px-3 py-2 rounded-drafted shadow-drafted-lg transform -translate-x-1/2 -translate-y-full"
           style={{ left: tooltipPos.x, top: tooltipPos.y - 8 }}
         >
           <div className="font-medium">{hoveredPoint.label}</div>
-          <div className="text-neutral-400 mt-0.5">
+          <div className="text-drafted-muted mt-0.5 flex items-center gap-1.5">
+            <span 
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: getClusterColor(hoveredPoint.cluster) }}
+            />
             Cluster {hoveredPoint.cluster + 1}
           </div>
           <div 
-            className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 bg-neutral-900 transform rotate-45"
+            className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 bg-drafted-black transform rotate-45"
           />
         </div>
       )}
-
-      {/* Legend */}
-      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-sm">
-        <div className="text-xs font-medium text-neutral-500 mb-2">Clusters</div>
-        <div className="space-y-1.5">
-          {clusters.map(cluster => (
-            <div key={cluster.id} className="flex items-center gap-2">
-              <div 
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: cluster.color }}
-              />
-              <span className="text-xs text-neutral-600">
-                Cluster {cluster.id + 1} ({cluster.size})
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
     </motion.div>
   );
 }
-

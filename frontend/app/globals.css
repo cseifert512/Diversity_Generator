@@ -2,137 +2,203 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import Plus Jakarta Sans from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+/* Import fonts matching drafted.ai aesthetic */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Sora:wght@400;500;600;700&display=swap');
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
-    --primary: 24 85% 54%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 9%;
-    --border: 0 0% 90%;
-    --ring: 24 85% 54%;
-    --radius: 0.875rem;
-  }
-
   * {
-    @apply border-neutral-200;
+    @apply border-drafted-border;
   }
 
   body {
-    @apply bg-white text-neutral-900 antialiased;
+    @apply bg-drafted-cream text-drafted-black antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  /* Custom scrollbar */
+  /* Custom scrollbar - subtle */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-neutral-100;
+    @apply bg-transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-neutral-300 rounded-full;
+    @apply bg-drafted-muted/40 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-neutral-400;
+    @apply bg-drafted-muted;
   }
 }
 
 @layer components {
-  /* Card styles matching drafted.ai */
-  .card {
-    @apply bg-white rounded-2xl shadow-card transition-shadow duration-200;
+  /* Drafted.ai style cards */
+  .card-drafted {
+    @apply bg-white rounded-drafted-lg shadow-drafted transition-all duration-200;
   }
 
-  .card:hover {
-    @apply shadow-card-hover;
+  .card-drafted:hover {
+    @apply shadow-drafted-hover;
   }
 
-  /* Button styles */
-  .btn-primary {
-    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white bg-primary-500 rounded-full hover:bg-primary-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  /* Button styles - drafted.ai */
+  .btn-drafted-primary {
+    @apply inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold 
+           text-white bg-drafted-black rounded-full 
+           hover:bg-drafted-dark transition-colors duration-150;
   }
 
-  .btn-secondary {
-    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-neutral-700 bg-neutral-100 rounded-full hover:bg-neutral-200 transition-colors duration-200;
+  .btn-drafted-secondary {
+    @apply inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium 
+           text-drafted-black bg-white border border-drafted-border rounded-full 
+           hover:bg-drafted-bg transition-colors duration-150;
   }
 
-  /* Section wrapper */
-  .section {
-    @apply py-16 md:py-24;
+  .btn-drafted-coral {
+    @apply inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold 
+           text-white bg-coral-500 rounded-full 
+           hover:bg-coral-600 transition-colors duration-150;
   }
 
-  .section-title {
-    @apply text-3xl md:text-4xl font-bold text-neutral-900 tracking-tight;
+  .btn-drafted-outline {
+    @apply inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium 
+           text-drafted-gray border border-drafted-border rounded-full 
+           hover:border-drafted-gray hover:text-drafted-black transition-colors duration-150;
   }
 
-  .section-subtitle {
-    @apply text-lg text-neutral-500 mt-4 max-w-2xl;
+  /* Room tag pills */
+  .room-tag {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium;
   }
 
-  /* Grid layouts */
-  .plan-grid {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6;
+  .room-tag-bedroom {
+    @apply bg-room-bedroom text-drafted-dark;
   }
 
-  /* Metric display */
-  .metric-value {
-    @apply text-5xl md:text-6xl font-bold text-neutral-900 tabular-nums;
+  .room-tag-bathroom {
+    @apply bg-room-bathroom text-drafted-dark;
   }
 
-  .metric-label {
-    @apply text-sm font-medium text-neutral-500 uppercase tracking-wider;
+  .room-tag-kitchen {
+    @apply bg-room-kitchen text-drafted-dark;
   }
 
-  /* Progress bar */
-  .progress-bar {
-    @apply h-2 bg-neutral-100 rounded-full overflow-hidden;
+  .room-tag-living {
+    @apply bg-room-living text-drafted-dark;
   }
 
-  .progress-fill {
-    @apply h-full bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 transition-all duration-500;
+  /* Sidebar styles */
+  .sidebar {
+    @apply w-80 min-h-screen bg-drafted-cream border-r border-drafted-border p-6;
   }
 
-  /* Dropzone */
-  .dropzone {
-    @apply border-2 border-dashed border-neutral-300 rounded-2xl p-12 text-center cursor-pointer transition-all duration-200;
+  .sidebar-section {
+    @apply py-4 border-b border-drafted-border last:border-b-0;
   }
 
-  .dropzone:hover {
-    @apply border-primary-400 bg-primary-50/50;
+  .sidebar-label {
+    @apply text-xs font-medium text-drafted-light uppercase tracking-wider mb-2 flex items-center gap-2;
   }
 
-  .dropzone.active {
-    @apply border-primary-500 bg-primary-50;
+  .sidebar-value {
+    @apply text-sm font-medium text-drafted-black;
+  }
+
+  /* Input styles */
+  .input-drafted {
+    @apply w-full px-4 py-2.5 bg-white border border-drafted-border rounded-drafted 
+           text-drafted-black placeholder:text-drafted-muted
+           focus:outline-none focus:ring-2 focus:ring-coral-500/20 focus:border-coral-500
+           transition-colors duration-150;
+  }
+
+  .select-drafted {
+    @apply w-full px-4 py-2.5 bg-white border border-drafted-border rounded-drafted 
+           text-drafted-black cursor-pointer
+           focus:outline-none focus:ring-2 focus:ring-coral-500/20 focus:border-coral-500
+           transition-colors duration-150 appearance-none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b6b6b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+    padding-right: 2.5rem;
+  }
+
+  /* Slider */
+  .slider-drafted {
+    @apply w-full h-1.5 bg-drafted-border rounded-full appearance-none cursor-pointer;
+  }
+
+  .slider-drafted::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-drafted-black shadow-drafted cursor-pointer;
+    margin-top: -5px;
+  }
+
+  .slider-drafted::-webkit-slider-track {
+    @apply bg-drafted-border rounded-full;
+  }
+
+  /* Draft card */
+  .draft-card {
+    @apply bg-white rounded-drafted-xl overflow-hidden transition-all duration-200;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .draft-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+  }
+
+  /* Progress indicator */
+  .progress-bar-drafted {
+    @apply h-1 bg-drafted-border rounded-full overflow-hidden;
+  }
+
+  .progress-fill-drafted {
+    @apply h-full bg-gradient-to-r from-coral-400 to-coral-500 rounded-full transition-all duration-500;
+  }
+
+  /* Chip selectors */
+  .chip {
+    @apply px-4 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-150;
+  }
+
+  .chip-inactive {
+    @apply bg-white border border-drafted-border text-drafted-gray hover:border-drafted-gray;
+  }
+
+  .chip-active {
+    @apply bg-drafted-black text-white border border-drafted-black;
+  }
+
+  /* Number stepper */
+  .stepper {
+    @apply inline-flex items-center border border-drafted-border rounded-drafted overflow-hidden;
+  }
+
+  .stepper-btn {
+    @apply w-10 h-10 flex items-center justify-center text-drafted-gray hover:bg-drafted-bg 
+           transition-colors duration-150;
+  }
+
+  .stepper-value {
+    @apply w-12 h-10 flex items-center justify-center text-sm font-semibold text-drafted-black 
+           border-x border-drafted-border;
   }
 }
 
 @layer utilities {
-  /* Animation delays for staggered effects */
-  .delay-100 { animation-delay: 100ms; }
-  .delay-200 { animation-delay: 200ms; }
+  /* Animation delays */
+  .delay-75 { animation-delay: 75ms; }
+  .delay-150 { animation-delay: 150ms; }
+  .delay-225 { animation-delay: 225ms; }
   .delay-300 { animation-delay: 300ms; }
-  .delay-400 { animation-delay: 400ms; }
-  .delay-500 { animation-delay: 500ms; }
 
-  /* Gradient text */
-  .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-500 to-primary-600;
+  /* Text styles */
+  .text-drafted-heading {
+    @apply font-display font-semibold tracking-tight;
   }
 }
-

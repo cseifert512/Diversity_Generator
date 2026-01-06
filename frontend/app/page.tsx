@@ -3,33 +3,31 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Play, 
-  Trash2, 
-  Loader2, 
-  AlertCircle,
-  RefreshCw,
-  ChevronDown,
+  Sparkles, 
   Upload,
-  Sparkles,
-  ArrowRight
+  ChevronDown,
+  Layers,
+  BarChart3,
+  Target,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle2,
+  X
 } from 'lucide-react';
 
 import { Header } from '@/components/layout/Header';
-import { Hero } from '@/components/layout/Hero';
-import { Section } from '@/components/layout/Section';
-import { DropZone } from '@/components/upload/DropZone';
-import { PlanGallery } from '@/components/upload/PlanGallery';
+import { GenerationSidebar } from '@/components/sidebar/GenerationSidebar';
+import { DraftGrid } from '@/components/drafts/DraftGrid';
 import { AnalysisPanel } from '@/components/analysis/AnalysisPanel';
-import { GenerationForm } from '@/components/generation/GenerationForm';
-import { GenerationProgress } from '@/components/generation/GenerationProgress';
+import { DropZone } from '@/components/upload/DropZone';
 import { useAnalysis } from '@/hooks/useAnalysis';
 import { useGeneration } from '@/hooks/useGeneration';
 
-type AppMode = 'choose' | 'generate' | 'upload';
+type AppMode = 'generate' | 'upload';
 
 export default function Home() {
-  const [mode, setMode] = useState<AppMode>('choose');
-  const [showPlans, setShowPlans] = useState(true);
+  const [mode, setMode] = useState<AppMode>('generate');
+  const [showAnalysis, setShowAnalysis] = useState(true);
 
   // Upload flow
   const {
@@ -59,362 +57,249 @@ export default function Home() {
     resetGeneration,
   } = useGeneration();
 
-  // Determine which plans/analysis to show based on mode
+  // Determine which data to show
   const currentPlans = mode === 'generate' ? generatedPlans : uploadedPlans;
   const currentThumbnails = mode === 'generate' ? genThumbnails : uploadThumbnails;
   const currentAnalysis = mode === 'generate' ? genAnalysisResult : uploadAnalysisResult;
   const currentError = mode === 'generate' ? genError : uploadError;
-
-  const isLoading = analysisState === 'uploading' || analysisState === 'analyzing' || isGenerating;
   const hasPlans = currentPlans.length > 0;
-  const canAnalyze = uploadedPlans.length >= 2 && analysisState !== 'analyzing';
 
   const handleReset = () => {
-    setMode('choose');
     resetAnalysis();
     resetGeneration();
   };
 
   return (
-    <main className="min-h-screen bg-white">
+    <div className="min-h-screen bg-drafted-cream">
       <Header />
       
-      <Hero
-        title="Analyze Design Diversity"
-        subtitle="Generate or upload floor plans to evaluate design variation, spatial topology, and program distribution. Ensure your AI-generated designs explore the full possibility space."
-      />
-
-      {/* Mode Selection */}
-      {mode === 'choose' && (
-        <Section className="bg-neutral-50 border-y border-neutral-100">
-          <div className="max-w-3xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="grid md:grid-cols-2 gap-6"
-            >
-              {/* Generate Option */}
+      <div className="flex">
+        {/* Left Sidebar */}
+        <aside className="w-80 min-h-[calc(100vh-56px)] bg-drafted-cream border-r border-drafted-border flex flex-col">
+          {/* Mode Toggle */}
+          <div className="p-4 border-b border-drafted-border">
+            <div className="flex bg-white rounded-full p-1 border border-drafted-border">
               <button
                 onClick={() => setMode('generate')}
-                className="card p-8 text-left hover:shadow-elevated transition-shadow group"
+                className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-full text-sm font-medium transition-all ${
+                  mode === 'generate' 
+                    ? 'bg-drafted-black text-white' 
+                    : 'text-drafted-gray hover:text-drafted-black'
+                }`}
               >
-                <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary-200 transition-colors">
-                  <Sparkles className="w-6 h-6 text-primary-500" />
-                </div>
-                <h3 className="text-xl font-bold text-neutral-900 mb-2">
-                  Generate with AI
-                </h3>
-                <p className="text-neutral-500 mb-4">
-                  Use Gemini to create diverse floor plans automatically. 
-                  Configure bedrooms, style, and let AI explore variations.
-                </p>
-                <span className="inline-flex items-center text-primary-500 font-medium text-sm">
-                  Start generating
-                  <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                </span>
+                <Sparkles className="w-4 h-4" />
+                Generate
               </button>
-
-              {/* Upload Option */}
               <button
                 onClick={() => setMode('upload')}
-                className="card p-8 text-left hover:shadow-elevated transition-shadow group"
+                className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-full text-sm font-medium transition-all ${
+                  mode === 'upload' 
+                    ? 'bg-drafted-black text-white' 
+                    : 'text-drafted-gray hover:text-drafted-black'
+                }`}
               >
-                <div className="w-12 h-12 bg-neutral-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-neutral-200 transition-colors">
-                  <Upload className="w-6 h-6 text-neutral-500" />
-                </div>
-                <h3 className="text-xl font-bold text-neutral-900 mb-2">
-                  Upload Existing Plans
-                </h3>
-                <p className="text-neutral-500 mb-4">
-                  Already have floor plan images? Upload them to analyze 
-                  their diversity and clustering patterns.
-                </p>
-                <span className="inline-flex items-center text-neutral-600 font-medium text-sm">
-                  Upload plans
-                  <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                </span>
+                <Upload className="w-4 h-4" />
+                Upload
               </button>
-            </motion.div>
+            </div>
           </div>
-        </Section>
-      )}
 
-      {/* Generation Mode */}
-      {mode === 'generate' && (!hasResults || (hasResults && !hasPlans)) && (
-        <Section className="bg-neutral-50 border-y border-neutral-100">
-          <div className="max-w-2xl mx-auto">
-            {isGenerating ? (
-              <GenerationProgress
-                total={generationResult?.generated_count || 6}
-                completed={generationResult?.generated_count || 0}
-                failed={generationResult?.failed_count || 0}
-                isComplete={false}
+          {/* Sidebar Content */}
+          <div className="flex-1 overflow-y-auto">
+            {mode === 'generate' ? (
+              <GenerationSidebar 
+                onGenerate={handleGenerate}
+                isGenerating={isGenerating}
               />
-            ) : hasResults && !hasPlans ? (
-              // All generations failed state
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center py-12"
-              >
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="w-8 h-8 text-red-500" />
-                </div>
-                <h3 className="text-xl font-bold text-neutral-900 mb-2">
-                  Generation Failed
-                </h3>
-                <p className="text-neutral-500 mb-6 max-w-md mx-auto">
-                  {genError || `All ${generationResult?.failed_count || 0} generation attempts failed. This may be due to API limits or model availability.`}
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <button
-                    onClick={handleReset}
-                    className="btn-secondary"
-                  >
-                    ← Back to options
-                  </button>
-                  <button
-                    onClick={() => resetGeneration()}
-                    className="btn-primary flex items-center gap-2"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Try Again
-                  </button>
-                </div>
-              </motion.div>
             ) : (
-              <>
-                <button
-                  onClick={() => setMode('choose')}
-                  className="mb-6 text-sm text-neutral-500 hover:text-neutral-700 transition-colors flex items-center gap-1"
-                >
-                  ← Back to options
-                </button>
-                <GenerationForm 
-                  onGenerate={handleGenerate} 
-                  isGenerating={isGenerating}
+              <div className="p-4">
+                <DropZone
+                  onFilesSelected={handleFilesSelected}
+                  isUploading={analysisState === 'uploading'}
+                  maxFiles={30}
+                  compact
                 />
-              </>
+                
+                {uploadedPlans.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-drafted-gray">
+                        {uploadedPlans.length} plans uploaded
+                      </span>
+                      <button
+                        onClick={handleClearAll}
+                        className="text-drafted-gray hover:text-coral-500 transition-colors"
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                    
+                    <button
+                      onClick={handleAnalyze}
+                      disabled={uploadedPlans.length < 2 || analysisState === 'analyzing'}
+                      className="w-full btn-drafted-coral disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {analysisState === 'analyzing' ? 'Analyzing...' : 'Analyze Diversity'}
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
-        </Section>
-      )}
 
-      {/* Upload Mode */}
-      {mode === 'upload' && (
-        <Section className="bg-neutral-50 border-y border-neutral-100">
-          <button
-            onClick={() => setMode('choose')}
-            className="mb-6 text-sm text-neutral-500 hover:text-neutral-700 transition-colors flex items-center gap-1"
-          >
-            ← Back to options
-          </button>
+          {/* Sidebar Footer - Diversity Score Preview */}
+          {currentAnalysis && (
+            <div className="p-4 border-t border-drafted-border bg-white">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-drafted-light uppercase tracking-wider">
+                  Diversity Score
+                </span>
+                <span className={`text-2xl font-bold ${
+                  currentAnalysis.diversity_score >= 0.7 ? 'text-green-600' :
+                  currentAnalysis.diversity_score >= 0.4 ? 'text-amber-500' :
+                  'text-coral-500'
+                }`}>
+                  {(currentAnalysis.diversity_score * 100).toFixed(0)}%
+                </span>
+              </div>
+              <div className="progress-bar-drafted">
+                <div 
+                  className="progress-fill-drafted"
+                  style={{ width: `${currentAnalysis.diversity_score * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </aside>
 
-          <DropZone
-            onFilesSelected={handleFilesSelected}
-            isUploading={analysisState === 'uploading'}
-            maxFiles={30}
-          />
+        {/* Main Content */}
+        <main className="flex-1 min-h-[calc(100vh-56px)] bg-white">
+          {/* Top Bar */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-drafted-border">
+            <div className="flex items-center gap-4">
+              <h1 className="text-lg font-semibold text-drafted-black">
+                {mode === 'generate' ? 'Generated Drafts' : 'Uploaded Plans'}
+              </h1>
+              {hasPlans && (
+                <span className="text-sm text-drafted-gray">
+                  {currentPlans.length} {currentPlans.length === 1 ? 'plan' : 'plans'}
+                </span>
+              )}
+            </div>
 
-          {/* Error Display */}
+            <div className="flex items-center gap-3">
+              {hasPlans && (
+                <button
+                  onClick={handleReset}
+                  className="btn-drafted-outline flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Reset
+                </button>
+              )}
+              
+              {currentAnalysis && (
+                <button
+                  onClick={() => setShowAnalysis(!showAnalysis)}
+                  className={`btn-drafted-secondary flex items-center gap-2 ${
+                    showAnalysis ? 'bg-drafted-bg' : ''
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  Analysis
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showAnalysis ? 'rotate-180' : ''}`} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Error State */}
           <AnimatePresence>
-            {uploadError && (
+            {currentError && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3"
+                className="mx-6 mt-4 p-4 bg-coral-50 border border-coral-200 rounded-drafted flex items-center justify-between"
               >
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-600">{uploadError}</p>
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-coral-500" />
+                  <p className="text-sm text-coral-700">{currentError}</p>
+                </div>
+                <button
+                  onClick={handleReset}
+                  className="text-sm font-medium text-coral-600 hover:text-coral-700"
+                >
+                  Try again
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Action Bar */}
-          {uploadedPlans.length > 0 && (
+          {/* Generation Progress */}
+          {isGenerating && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-6 flex flex-wrap items-center justify-between gap-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-24"
             >
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-neutral-500">
-                  {uploadedPlans.length} plan{uploadedPlans.length !== 1 ? 's' : ''} uploaded
-                </span>
-                <button
-                  onClick={handleClearAll}
-                  className="text-sm text-neutral-500 hover:text-red-500 transition-colors flex items-center gap-1"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Clear all
-                </button>
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-drafted-border rounded-full" />
+                <div className="absolute inset-0 w-16 h-16 border-4 border-coral-500 rounded-full border-t-transparent animate-spin" />
               </div>
-
-              <button
-                onClick={handleAnalyze}
-                disabled={!canAnalyze}
-                className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {analysisState === 'analyzing' ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4" />
-                    Analyze Diversity
-                  </>
-                )}
-              </button>
+              <p className="mt-4 text-drafted-gray font-medium">Generating floor plans...</p>
+              <p className="text-sm text-drafted-light mt-1">This may take a moment</p>
             </motion.div>
           )}
-        </Section>
-      )}
 
-      {/* Error Display for Generation */}
-      <AnimatePresence>
-        {currentError && mode === 'generate' && (
-          <Section>
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="max-w-2xl mx-auto p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3"
-            >
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-              <p className="text-sm text-red-600">{currentError}</p>
-              <button
-                onClick={handleReset}
-                className="ml-auto text-sm text-red-600 hover:text-red-700 font-medium"
-              >
-                Try again
-              </button>
-            </motion.div>
-          </Section>
-        )}
-      </AnimatePresence>
-
-      {/* Plans Gallery */}
-      {hasPlans && (mode === 'upload' || hasResults) && (
-        <Section>
-          <div className="flex items-center justify-between mb-6">
-            <button
-              onClick={() => setShowPlans(!showPlans)}
-              className="flex items-center gap-2 text-neutral-900 font-semibold"
-            >
-              {mode === 'generate' ? 'Generated' : 'Uploaded'} Plans ({currentPlans.length})
-              <ChevronDown className={`w-5 h-5 transition-transform ${
-                showPlans ? 'rotate-180' : ''
-              }`} />
-            </button>
-
-            {hasResults && (
-              <button
-                onClick={handleReset}
-                className="btn-secondary flex items-center gap-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Start Over
-              </button>
-            )}
-          </div>
-
-          <AnimatePresence>
-            {showPlans && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <PlanGallery
-                  plans={currentPlans.map(p => ({
-                    ...p,
-                    thumbnail: currentThumbnails[p.id]
-                  }))}
-                  onRemove={mode === 'upload' ? handleRemovePlan : undefined}
-                  scatterPoints={currentAnalysis?.visualization.points}
-                  isLoading={isLoading}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Section>
-      )}
-
-      {/* Analysis Results */}
-      <AnimatePresence>
-        {currentAnalysis && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <Section 
-              id="results"
-              title="Analysis Results"
-              subtitle="Diversity assessment of your floor plan collection"
-              className="bg-neutral-50 border-t border-neutral-100"
-            >
-              <AnalysisPanel result={currentAnalysis} />
-            </Section>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Empty State / Instructions */}
-      {mode === 'choose' && (
-        <Section className="text-center py-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="max-w-lg mx-auto"
-          >
-            <h3 className="text-xl font-semibold text-neutral-900 mb-4">
-              Why Diversity Matters
-            </h3>
-            <p className="text-neutral-500 mb-6">
-              AI-generated designs can converge on similar patterns. 
-              This tool helps ensure your floor plans explore the full 
-              possibility space, leading to better design outcomes.
-            </p>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold text-primary-500">10+</div>
-                <div className="text-xs text-neutral-400">Layout Variations</div>
+          {/* Empty State */}
+          {!hasPlans && !isGenerating && !currentError && (
+            <div className="flex flex-col items-center justify-center py-24 px-6">
+              <div className="w-20 h-20 bg-drafted-bg rounded-full flex items-center justify-center mb-4">
+                <Layers className="w-10 h-10 text-drafted-muted" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-primary-500">4</div>
-                <div className="text-xs text-neutral-400">Diversity Metrics</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-primary-500">0-1</div>
-                <div className="text-xs text-neutral-400">Clear Scoring</div>
-              </div>
+              <h2 className="text-xl font-semibold text-drafted-black mb-2">
+                {mode === 'generate' ? 'Generate Your First Drafts' : 'Upload Floor Plans'}
+              </h2>
+              <p className="text-drafted-gray text-center max-w-md">
+                {mode === 'generate' 
+                  ? 'Configure your requirements in the sidebar and click Generate to create diverse floor plans.'
+                  : 'Drag and drop floor plan images to analyze their diversity.'
+                }
+              </p>
             </div>
-          </motion.div>
-        </Section>
-      )}
+          )}
 
-      {/* Footer */}
-      <footer className="py-8 border-t border-neutral-100">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-sm text-neutral-400">
-            Floor Plan Diversity Analyzer • A prototype tool by{' '}
-            <a 
-              href="https://drafted.ai" 
-              className="text-primary-500 hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Drafted
-            </a>
-          </p>
-        </div>
-      </footer>
-    </main>
+          {/* Draft Grid */}
+          {hasPlans && !isGenerating && (
+            <div className="p-6">
+              {/* Analysis Panel - Collapsible */}
+              <AnimatePresence>
+                {currentAnalysis && showAnalysis && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-6"
+                  >
+                    <AnalysisPanel result={currentAnalysis} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Plans Grid */}
+              <DraftGrid
+                plans={currentPlans.map(p => ({
+                  ...p,
+                  thumbnail: currentThumbnails[p.id] || p.thumbnail
+                }))}
+                scatterPoints={currentAnalysis?.visualization.points}
+                onRemove={mode === 'upload' ? handleRemovePlan : undefined}
+              />
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
   );
 }

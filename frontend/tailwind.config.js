@@ -8,51 +8,69 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Drafted.ai inspired palette
-        primary: {
-          50: '#fef7f0',
-          100: '#fdebd9',
-          200: '#fad5b3',
-          300: '#f6b882',
-          400: '#f19350',
-          500: '#ed7628',
-          600: '#de5c1e',
-          700: '#b8461a',
-          800: '#93391d',
-          900: '#77311b',
+        // Drafted.ai exact palette
+        coral: {
+          50: '#fff7f5',
+          100: '#ffebe6',
+          200: '#ffd4cc',
+          300: '#ffb3a6',
+          400: '#ff8d7a',
+          500: '#e86c5d', // Main coral from room tags
+          600: '#d4574a',
+          700: '#b24439',
+          800: '#8c362e',
+          900: '#6e2b25',
         },
-        neutral: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          200: '#e5e5e5',
-          300: '#d4d4d4',
-          400: '#a3a3a3',
-          500: '#737373',
-          600: '#525252',
-          700: '#404040',
-          800: '#262626',
-          900: '#171717',
+        cream: {
+          50: '#fefdfb',
+          100: '#fdf9f3',
+          200: '#f9f1e3',
+          300: '#f3e4c9',
+          400: '#e8d0a4',
+        },
+        drafted: {
+          black: '#1a1a1a',
+          dark: '#2d2d2d',
+          gray: '#6b6b6b',
+          light: '#9a9a9a',
+          muted: '#c4c4c4',
+          border: '#e8e8e8',
+          bg: '#f7f7f5',
+          cream: '#fffcf7',
+        },
+        // Room colors matching drafted.ai floor plans
+        room: {
+          bedroom: '#e6e0f0',     // Lavender/purple
+          bathroom: '#a8d5e5',    // Light blue
+          kitchen: '#f4c4a0',     // Peach/salmon
+          living: '#f5e6d3',      // Cream
+          garage: '#d4d4d4',      // Gray
+          outdoor: '#c5e8c5',     // Light green
+          pool: '#87ceeb',        // Sky blue
         }
       },
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['DM Sans', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        display: ['Sora', 'DM Sans', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05)',
-        'card-hover': '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05)',
-        'elevated': '0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05)',
+        'drafted': '0 2px 8px rgba(0, 0, 0, 0.04)',
+        'drafted-hover': '0 4px 16px rgba(0, 0, 0, 0.08)',
+        'drafted-lg': '0 8px 24px rgba(0, 0, 0, 0.06)',
+        'card': '0 1px 3px rgba(0, 0, 0, 0.04)',
+        'card-hover': '0 4px 12px rgba(0, 0, 0, 0.06)',
       },
       borderRadius: {
-        'xl': '0.875rem',
-        '2xl': '1rem',
-        '3xl': '1.5rem',
+        'drafted': '12px',
+        'drafted-lg': '16px',
+        'drafted-xl': '20px',
       },
       animation: {
-        'fade-in': 'fadeIn 0.5s ease-out',
-        'slide-up': 'slideUp 0.5s ease-out',
-        'scale-in': 'scaleIn 0.3s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'fade-in': 'fadeIn 0.4s ease-out',
+        'slide-up': 'slideUp 0.4s ease-out',
+        'slide-in-right': 'slideInRight 0.4s ease-out',
+        'scale-in': 'scaleIn 0.2s ease-out',
+        'pulse-slow': 'pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
         fadeIn: {
@@ -60,11 +78,15 @@ module.exports = {
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        slideInRight: {
+          '0%': { opacity: '0', transform: 'translateX(-16px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
         scaleIn: {
-          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '0%': { opacity: '0', transform: 'scale(0.96)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
       },
@@ -72,4 +94,3 @@ module.exports = {
   },
   plugins: [],
 };
-

@@ -11,7 +11,9 @@ import type {
   GenerationOptions,
 } from './types';
 
+// Use direct backend URL for long-running requests to avoid Next.js proxy timeout
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const BACKEND_DIRECT = 'http://localhost:8000';
 
 /**
  * Upload floor plan images to the backend
@@ -141,13 +143,14 @@ export async function getGenerationOptions(): Promise<GenerationOptions> {
 
 /**
  * Generate floor plans using Gemini AI
+ * Uses direct backend URL to avoid Next.js proxy timeout for long-running requests
  */
 export async function generateFloorPlans(request: GenerationRequest): Promise<GenerationResponse> {
   console.log('Generating floor plans with request:', request);
-  console.log('API_BASE:', API_BASE || '(empty - using relative URL)');
+  console.log('Using direct backend URL:', BACKEND_DIRECT);
   
   try {
-    const response = await fetch(`${API_BASE}/api/generate`, {
+    const response = await fetch(`${BACKEND_DIRECT}/api/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
