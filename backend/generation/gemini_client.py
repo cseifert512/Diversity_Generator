@@ -7,7 +7,7 @@ import os
 import asyncio
 import base64
 import time
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Callable
 from dataclasses import dataclass, field
 import google.generativeai as genai
 from PIL import Image
@@ -15,6 +15,7 @@ import io
 import httpx
 
 from dotenv import load_dotenv
+from utils.image_processing import extract_edges_with_fill
 
 # Load environment variables with explicit encoding handling
 try:
@@ -42,7 +43,9 @@ class GeneratedPlan:
     """Result from a single floor plan generation."""
     success: bool
     plan_id: str
-    image_data: Optional[bytes] = None
+    image_data: Optional[bytes] = None  # Colored version for analysis
+    stylized_image_data: Optional[bytes] = None  # Polished version for display
+    display_name: Optional[str] = None  # AI-generated descriptive name
     prompt_used: str = ""
     variation_type: str = ""
     generation_time_ms: float = 0
@@ -363,13 +366,13 @@ Create a unique floor plan that clearly demonstrates this layout approach. Make 
         start_time = time.time()
         last_error = None
         
-        # Try Gemini 2.0 Flash for image generation
+        # Try Gemini 2.5 Flash for faster image generation
         for attempt in range(self.max_retries):
             try:
-                print(f"[Attempt {attempt + 1}] Generating floor plan with Gemini 2.0: {variation_type}")
+                print(f"[Attempt {attempt + 1}] Generating floor plan with Gemini 2.5 Flash: {variation_type}")
                 
-                # Use Gemini 2.0 Flash Experimental with image output
-                url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent"
+                # Use Gemini 2.5 Flash for faster generation (stylization uses 3 Pro for quality)
+                url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
                 
                 headers = {
                     "Content-Type": "application/json",
@@ -478,7 +481,9 @@ Create a unique floor plan that clearly demonstrates this layout approach. Make 
         self,
         config: GenerationConfig,
         count: int = 6,
-        parallel: bool = False  # Default to sequential to avoid rate limits
+        parallel: bool = True,  # Default to parallel with semaphore
+        max_concurrent: int = 3,  # Max concurrent API calls
+        progress_callback: Optional[Callable[[str, int, int, Optional[GeneratedPlan]], None]] = None
     ) -> List[GeneratedPlan]:
         """
         Generate multiple floor plans with diversity.
@@ -486,31 +491,68 @@ Create a unique floor plan that clearly demonstrates this layout approach. Make 
         Args:
             config: Generation configuration
             count: Number of plans to generate
-            parallel: Whether to generate in parallel (default False for API rate limits)
+            parallel: Whether to generate in parallel (default True with rate limiting)
+            max_concurrent: Maximum concurrent API calls (default 3)
+            progress_callback: Optional callback for progress updates
+                              (phase: str, completed: int, total: int, plan: Optional[GeneratedPlan])
             
         Returns:
             List of GeneratedPlan objects
         """
         import uuid
         
-        results = []
-        
-        for i in range(count):
-            plan_id = f"gen_{uuid.uuid4().hex[:8]}"
-            print(f"\n{'='*50}")
-            print(f"Generating plan {i+1}/{count}")
-            print(f"{'='*50}")
+        if not parallel:
+            # Sequential generation (legacy mode)
+            results = []
+            for i in range(count):
+                plan_id = f"gen_{uuid.uuid4().hex[:8]}"
+                print(f"\n{'='*50}")
+                print(f"Generating plan {i+1}/{count}")
+                print(f"{'='*50}")
+                
+                result = await self.generate_single(config, variation_index=i, plan_id=plan_id)
+                results.append(result)
+                
+                if progress_callback:
+                    progress_callback("generating", i + 1, count, result)
+                
+                # Delay between generations to respect rate limits
+                if i < count - 1:
+                    delay = 2.0 if not self.use_synthetic_fallback else 0.1
+                    print(f"Waiting {delay}s before next generation...")
+                    await asyncio.sleep(delay)
             
-            result = await self.generate_single(config, variation_index=i, plan_id=plan_id)
-            results.append(result)
-            
-            # Delay between generations to respect rate limits
-            if i < count - 1:
-                delay = 2.0 if not self.use_synthetic_fallback else 0.1
-                print(f"Waiting {delay}s before next generation...")
-                await asyncio.sleep(delay)
+            return results
         
-        return results
+        # Parallel generation with semaphore for rate limiting
+        semaphore = asyncio.Semaphore(max_concurrent)
+        results: List[Optional[GeneratedPlan]] = [None] * count
+        completed_count = 0
+        
+        async def generate_with_limit(index: int) -> None:
+            nonlocal completed_count
+            async with semaphore:
+                plan_id = f"gen_{uuid.uuid4().hex[:8]}"
+                print(f"\n{'='*50}")
+                print(f"Generating plan {index+1}/{count} (concurrent)")
+                print(f"{'='*50}")
+                
+                result = await self.generate_single(config, variation_index=index, plan_id=plan_id)
+                results[index] = result
+                completed_count += 1
+                
+                if progress_callback:
+                    progress_callback("generating", completed_count, count, result)
+                
+                # Small delay after each generation to be nice to the API
+                await asyncio.sleep(0.5)
+        
+        # Generate all plans concurrently (limited by semaphore)
+        tasks = [generate_with_limit(i) for i in range(count)]
+        await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Filter out None results (shouldn't happen, but be safe)
+        return [r for r in results if r is not None]
 
     def generate_batch_sync(
         self,
@@ -519,6 +561,421 @@ Create a unique floor plan that clearly demonstrates this layout approach. Make 
     ) -> List[GeneratedPlan]:
         """Synchronous wrapper for batch generation."""
         return asyncio.run(self.generate_batch(config, count))
+
+    async def generate_batch_streaming(
+        self,
+        config: GenerationConfig,
+        count: int = 6,
+        max_concurrent: int = 3
+    ):
+        """
+        Generate floor plans with streaming progress updates.
+        
+        Yields progress dictionaries that can be sent via SSE.
+        
+        Args:
+            config: Generation configuration
+            count: Number of plans to generate
+            max_concurrent: Maximum concurrent API calls
+            
+        Yields:
+            dict: Progress updates with structure:
+                  {"phase": str, "completed": int, "total": int, "plan": Optional[dict]}
+        """
+        import uuid
+        from asyncio import Queue
+        
+        progress_queue: Queue = Queue()
+        results: List[Optional[GeneratedPlan]] = [None] * count
+        
+        semaphore = asyncio.Semaphore(max_concurrent)
+        completed_count = 0
+        
+        async def generate_with_progress(index: int) -> None:
+            nonlocal completed_count
+            async with semaphore:
+                plan_id = f"gen_{uuid.uuid4().hex[:8]}"
+                print(f"\n[STREAM] Generating plan {index+1}/{count}")
+                
+                result = await self.generate_single(config, variation_index=index, plan_id=plan_id)
+                results[index] = result
+                completed_count += 1
+                
+                # Queue progress update
+                plan_info = None
+                if result.success:
+                    plan_info = {
+                        "plan_id": result.plan_id,
+                        "variation_type": result.variation_type,
+                        "success": True
+                    }
+                
+                await progress_queue.put({
+                    "phase": "generating",
+                    "completed": completed_count,
+                    "total": count,
+                    "plan": plan_info
+                })
+                
+                await asyncio.sleep(0.3)
+        
+        # Start generation tasks
+        tasks = [asyncio.create_task(generate_with_progress(i)) for i in range(count)]
+        
+        # Yield initial progress
+        yield {
+            "phase": "generating",
+            "completed": 0,
+            "total": count,
+            "plan": None
+        }
+        
+        # Yield progress updates as they come in
+        finished = 0
+        while finished < count:
+            try:
+                progress = await asyncio.wait_for(progress_queue.get(), timeout=60.0)
+                finished = progress["completed"]
+                yield progress
+            except asyncio.TimeoutError:
+                # Safety timeout - yield current state
+                yield {
+                    "phase": "generating",
+                    "completed": finished,
+                    "total": count,
+                    "plan": None,
+                    "timeout": True
+                }
+                break
+        
+        # Ensure all tasks are done
+        await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Stylization phase
+        successful_plans = [r for r in results if r and r.success]
+        stylized_count = 0
+        
+        yield {
+            "phase": "stylizing",
+            "completed": 0,
+            "total": len(successful_plans),
+            "plan": None
+        }
+        
+        for i, plan in enumerate(successful_plans):
+            stylized_data = await self.stylize_plan(plan.image_data)
+            stylized_count += 1
+            
+            plan_info = {
+                "plan_id": plan.plan_id,
+                "variation_type": plan.variation_type,
+                "has_stylized": stylized_data is not None
+            }
+            
+            # Store stylized data on the plan object
+            if stylized_data:
+                plan.stylized_data = stylized_data
+            
+            yield {
+                "phase": "stylizing",
+                "completed": stylized_count,
+                "total": len(successful_plans),
+                "plan": plan_info
+            }
+        
+        # Final result
+        yield {
+            "phase": "complete",
+            "completed": count,
+            "total": count,
+            "plans": [
+                {
+                    "plan_id": p.plan_id,
+                    "variation_type": p.variation_type,
+                    "success": p.success
+                }
+                for p in results if p
+            ]
+        }
+
+    async def stylize_plan(self, image_data: bytes, max_retries: int = 3) -> Optional[bytes]:
+        """
+        Transform a color-coded floor plan into a realistic rendered floor plan.
+        
+        Uses Canny edge detection to extract just the wall structure,
+        removing color information before passing to the rendering model.
+        
+        Args:
+            image_data: The colored floor plan image bytes
+            max_retries: Number of retry attempts for rate limiting
+            
+        Returns:
+            Stylized image bytes, or None if failed
+        """
+        # Pre-process: Extract edges to remove colors and keep only structure
+        try:
+            edge_image = extract_edges_with_fill(image_data)
+            print("[OK] Extracted edges from floor plan for rendering")
+        except Exception as e:
+            print(f"[WARN] Edge extraction failed, using original: {e}")
+            edge_image = image_data
+        
+        prompt = """Transform this architectural floor plan line drawing into a photorealistic 3D-rendered floor plan viewed from directly above.
+
+The input shows walls as black lines on white background. Use this layout EXACTLY.
+
+VISUAL STYLE REQUIREMENTS:
+- Realistic wood flooring texture throughout living areas and bedrooms (light oak/beige wood grain)
+- White/light gray tile texture for bathrooms and kitchen areas
+- Dark gray concrete texture for garage areas
+- Thick black walls (about 6-8 pixels) with clean edges
+- Soft shadows where walls meet floors for depth
+
+FURNITURE TO ADD (top-down view):
+- Bedrooms: White beds with pillows, nightstands, dressers
+- Living room: Sectional sofa, coffee table, area rug, entertainment center
+- Kitchen: White counters/cabinets in L or U shape, island if space allows
+- Dining area: Table with chairs
+- Bathrooms: White toilet, sink/vanity, bathtub or shower
+- Garage: 1-2 gray cars viewed from above
+- Office: Desk, chair
+
+IMPORTANT:
+- Keep the EXACT same room layout and wall positions from the input lines
+- Top-down orthographic view only (no perspective/angle)
+- Photorealistic rendered style like high-end real estate marketing
+- No text labels, dimensions, or annotations
+- Warm, inviting color palette
+
+Output a beautiful, photorealistic rendered floor plan image."""
+
+        image_b64 = base64.b64encode(edge_image).decode('utf-8')
+        # Use Gemini 3 Pro Image for better rendering quality
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent"
+        
+        payload = {
+            "contents": [{
+                "parts": [
+                    {
+                        "inlineData": {
+                            "mimeType": "image/png",
+                            "data": image_b64
+                        }
+                    },
+                    {"text": prompt}
+                ]
+            }],
+            "generationConfig": {
+                "responseModalities": ["TEXT", "IMAGE"],
+                "temperature": 0.7,
+            }
+        }
+        
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    response = await client.post(
+                        f"{url}?key={self.api_key}",
+                        json=payload,
+                        headers={"Content-Type": "application/json"}
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        
+                        if "candidates" in data and len(data["candidates"]) > 0:
+                            candidate = data["candidates"][0]
+                            if "content" in candidate and "parts" in candidate["content"]:
+                                for part in candidate["content"]["parts"]:
+                                    if "inlineData" in part:
+                                        inline_data = part["inlineData"]
+                                        if "data" in inline_data:
+                                            print("[OK] Successfully stylized floor plan")
+                                            return base64.b64decode(inline_data["data"])
+                        
+                        print("[WARN] No image in stylize response")
+                        return None
+                        
+                    elif response.status_code == 429:
+                        # Rate limited - wait and retry
+                        wait_time = (attempt + 1) * 3  # 3s, 6s, 9s
+                        print(f"[WARN] Stylize rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    else:
+                        print(f"[ERR] Stylize API error: {response.status_code}")
+                        return None
+                        
+            except Exception as e:
+                print(f"[ERR] Stylize failed: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2)
+                    continue
+                return None
+        
+        print("[ERR] Stylize failed after all retries")
+        return None
+
+    async def edit_plan(self, image_data: bytes, instruction: str) -> Optional[bytes]:
+        """
+        Edit a floor plan based on user instructions using image-to-image.
+        
+        Args:
+            image_data: The original floor plan image bytes
+            instruction: User's edit instruction (e.g., "Add a pool to the backyard")
+            
+        Returns:
+            Edited image bytes, or None if failed
+        """
+        prompt = f"""Modify this floor plan according to the following instruction:
+
+INSTRUCTION: {instruction}
+
+REQUIREMENTS:
+- Keep the same color coding scheme for room types:
+  * Living Room: #A8D5E5 (light blue)
+  * Bedroom: #E6E6FA (lavender)
+  * Bathroom: #98FB98 (mint green)
+  * Kitchen: #FF7F50 (coral)
+  * Hallway: #F5F5F5 (light gray)
+  * Pool/Outdoor: #87CEEB (sky blue)
+- Maintain black walls
+- Keep white background
+- Apply the requested modification while preserving the overall floor plan structure
+- Keep it as a clean 2D top-down floor plan
+- Do NOT add furniture, text labels, or dimensions
+
+Output the modified floor plan image."""
+
+        try:
+            image_b64 = base64.b64encode(image_data).decode('utf-8')
+            
+            # Use Gemini 3 Pro Image for better editing quality
+            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent"
+            
+            payload = {
+                "contents": [{
+                    "parts": [
+                        {
+                            "inlineData": {
+                                "mimeType": "image/png",
+                                "data": image_b64
+                            }
+                        },
+                        {"text": prompt}
+                    ]
+                }],
+                "generationConfig": {
+                    "responseModalities": ["TEXT", "IMAGE"],
+                    "temperature": 0.9,
+                }
+            }
+            
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{url}?key={self.api_key}",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    if "candidates" in data and len(data["candidates"]) > 0:
+                        candidate = data["candidates"][0]
+                        if "content" in candidate and "parts" in candidate["content"]:
+                            for part in candidate["content"]["parts"]:
+                                if "inlineData" in part:
+                                    inline_data = part["inlineData"]
+                                    if "data" in inline_data:
+                                        print(f"[OK] Successfully edited floor plan: {instruction[:50]}...")
+                                        return base64.b64decode(inline_data["data"])
+                    
+                    print("[WARN] No image in edit response")
+                else:
+                    print(f"[ERR] Edit API error: {response.status_code}")
+                    
+        except Exception as e:
+            print(f"[ERR] Edit failed: {e}")
+        
+        return None
+
+    async def generate_plan_name(self, image_data: bytes) -> str:
+        """
+        Generate a descriptive name for a floor plan using AI.
+        
+        Args:
+            image_data: The floor plan image bytes
+            
+        Returns:
+            A descriptive name like "Modern L-Shaped with Central Kitchen"
+        """
+        prompt = """Look at this floor plan and give it a descriptive name in 3-5 words.
+
+Focus on:
+- The overall layout shape (L-shaped, linear, compact, open, etc.)
+- Key distinctive features (split bedrooms, central kitchen, open concept, etc.)
+- The style/feel (modern, cozy, spacious, efficient, etc.)
+
+Examples of good names:
+- "Spacious Open-Concept Ranch"
+- "Compact Urban Studio"
+- "L-Shaped Split Bedroom"
+- "Modern Courtyard Layout"
+- "Traditional Central Hall"
+- "Efficient Linear Design"
+
+Respond with ONLY the name, nothing else. No quotes, no explanation."""
+
+        try:
+            image_b64 = base64.b64encode(image_data).decode('utf-8')
+            
+            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent"
+            
+            payload = {
+                "contents": [{
+                    "parts": [
+                        {
+                            "inlineData": {
+                                "mimeType": "image/png",
+                                "data": image_b64
+                            }
+                        },
+                        {"text": prompt}
+                    ]
+                }],
+                "generationConfig": {
+                    "temperature": 0.7,
+                }
+            }
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{url}?key={self.api_key}",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    if "candidates" in data and len(data["candidates"]) > 0:
+                        candidate = data["candidates"][0]
+                        if "content" in candidate and "parts" in candidate["content"]:
+                            for part in candidate["content"]["parts"]:
+                                if "text" in part:
+                                    name = part["text"].strip().strip('"').strip("'")
+                                    # Limit to reasonable length
+                                    if len(name) > 50:
+                                        name = name[:50]
+                                    print(f"[OK] Generated name: {name}")
+                                    return name
+                    
+        except Exception as e:
+            print(f"[ERR] Name generation failed: {e}")
+        
+        # Fallback to variation type
+        return "Floor Plan"
 
 
 # Convenience function for quick generation

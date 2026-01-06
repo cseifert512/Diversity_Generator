@@ -226,3 +226,4 @@ def quick_diversity_score(feature_vectors: np.ndarray) -> float:
     
     return float(min(mean_dist / max_dist, 1.0))
 
+

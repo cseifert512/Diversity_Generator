@@ -263,3 +263,4 @@ class GraphTopologyExtractor(BaseExtractor):
             "room_type_diversity",
         ]
 
+
