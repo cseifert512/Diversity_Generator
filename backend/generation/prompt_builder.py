@@ -341,3 +341,4 @@ def get_variation_description(index: int) -> str:
     variation = LAYOUT_VARIATIONS[index % len(LAYOUT_VARIATIONS)]
     return variation["description"]
 
+

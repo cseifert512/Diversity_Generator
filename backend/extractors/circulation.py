@@ -272,3 +272,4 @@ class CirculationExtractor(BaseExtractor):
             "circulation_compactness",
         ]
 
+

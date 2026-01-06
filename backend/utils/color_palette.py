@@ -144,3 +144,4 @@ WALL_COLOR_UPPER = (180, 255, 50)  # Dark threshold
 BACKGROUND_LOWER = (0, 0, 240)    # Near white
 BACKGROUND_UPPER = (180, 20, 255)  # White
 
+

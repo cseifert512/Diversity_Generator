@@ -211,3 +211,4 @@ class LightweightCNNExtractor(BaseExtractor):
         names.extend([f"gabor_{i}" for i in range(8)])
         return names
 
+

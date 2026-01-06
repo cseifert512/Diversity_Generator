@@ -120,3 +120,4 @@ class ExtractorPipeline:
             return np.concatenate(vectors)
         return np.array([])
 
+

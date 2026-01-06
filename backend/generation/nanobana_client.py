@@ -254,3 +254,4 @@ class NanobanaClientSync:
             self._async_client.generate_batch(prompts, **kwargs)
         )
 
+

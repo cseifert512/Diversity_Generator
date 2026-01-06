@@ -186,3 +186,90 @@ def encode_image_to_base64(image: np.ndarray) -> str:
     
     return base64.b64encode(buffer.read()).decode('utf-8')
 
+
+def extract_edges(image_data: bytes, low_threshold: int = 50, high_threshold: int = 150) -> bytes:
+    """
+    Extract edges from a floor plan image using Canny edge detection.
+    
+    This removes color information and keeps only the structural lines,
+    which is useful for passing to a rendering model without color bleed-through.
+    
+    Args:
+        image_data: Raw image bytes (PNG/JPEG)
+        low_threshold: Lower threshold for Canny edge detection
+        high_threshold: Upper threshold for Canny edge detection
+        
+    Returns:
+        PNG image bytes of the edge-detected image (white lines on black background)
+    """
+    # Decode image from bytes
+    nparr = np.frombuffer(image_data, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    
+    if img is None:
+        raise ValueError("Failed to decode image")
+    
+    # Convert to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    # Apply Gaussian blur to reduce noise
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    
+    # Apply Canny edge detection
+    edges = cv2.Canny(blurred, low_threshold, high_threshold)
+    
+    # Dilate slightly for thicker, more visible walls
+    kernel = np.ones((2, 2), np.uint8)
+    edges = cv2.dilate(edges, kernel, iterations=1)
+    
+    # Encode back to PNG bytes
+    _, buffer = cv2.imencode('.png', edges)
+    return buffer.tobytes()
+
+
+def extract_edges_with_fill(image_data: bytes, low_threshold: int = 50, high_threshold: int = 150) -> bytes:
+    """
+    Extract edges and create a clean architectural line drawing.
+    
+    Similar to extract_edges but inverts to black lines on white background
+    and applies additional cleanup for cleaner rendering input.
+    
+    Args:
+        image_data: Raw image bytes (PNG/JPEG)
+        low_threshold: Lower threshold for Canny edge detection
+        high_threshold: Upper threshold for Canny edge detection
+        
+    Returns:
+        PNG image bytes with black lines on white background
+    """
+    # Decode image from bytes
+    nparr = np.frombuffer(image_data, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    
+    if img is None:
+        raise ValueError("Failed to decode image")
+    
+    # Convert to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    # Apply bilateral filter to smooth while keeping edges
+    filtered = cv2.bilateralFilter(gray, 9, 75, 75)
+    
+    # Apply Canny edge detection
+    edges = cv2.Canny(filtered, low_threshold, high_threshold)
+    
+    # Dilate for thicker walls
+    kernel = np.ones((3, 3), np.uint8)
+    edges = cv2.dilate(edges, kernel, iterations=1)
+    
+    # Close small gaps
+    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+    
+    # Invert to get black lines on white background
+    inverted = cv2.bitwise_not(edges)
+    
+    # Encode back to PNG bytes
+    _, buffer = cv2.imencode('.png', inverted)
+    return buffer.tobytes()
+
+

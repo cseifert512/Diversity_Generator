@@ -42,3 +42,4 @@ __all__ = [
     "encode_image_to_base64",
 ]
 
+
