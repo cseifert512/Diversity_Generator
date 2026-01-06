@@ -155,17 +155,17 @@ export default function Home() {
                   Diversity Score
                 </span>
                 <span className={`text-2xl font-bold ${
-                  currentAnalysis.diversity_score >= 0.7 ? 'text-green-600' :
-                  currentAnalysis.diversity_score >= 0.4 ? 'text-amber-500' :
+                  currentAnalysis.diversity.score >= 0.7 ? 'text-green-600' :
+                  currentAnalysis.diversity.score >= 0.4 ? 'text-amber-500' :
                   'text-coral-500'
                 }`}>
-                  {(currentAnalysis.diversity_score * 100).toFixed(0)}%
+                  {(currentAnalysis.diversity.score * 100).toFixed(0)}%
                 </span>
               </div>
               <div className="progress-bar-drafted">
                 <div 
                   className="progress-fill-drafted"
-                  style={{ width: `${currentAnalysis.diversity_score * 100}%` }}
+                  style={{ width: `${currentAnalysis.diversity.score * 100}%` }}
                 />
               </div>
             </div>
