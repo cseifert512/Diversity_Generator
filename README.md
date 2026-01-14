@@ -18,11 +18,34 @@ This tool:
 
 ## Key Features
 
+### Floor Plan Generation
+- **Drafted.ai Integration**: Generate precise floor plans using Drafted's production diffusion model with room-level control
+- **Seed-Based Editing**: Edit plans by modifying the prompt while keeping the same seed for consistent variations
+- **Room Configuration**: Specify exact room types (30+ options) and sizes (S/M/L/XL) with CLIP-validated prompts
+- **SVG Output**: Vector floor plans with color-coded rooms for easy parsing and editing
+
+### Diversity Analysis (Gemini)
 - **AI Generation**: Generate 4-12 diverse floor plans with one click using Gemini 2.0 Flash
 - **10 Layout Variations**: Linear, L-shaped, open concept, split bedroom, and more
 - **Dual Output**: Colored version for analysis + stylized rendered version for display
 - **Edit Plans**: AI-powered image-to-image editing (add pool, open concept, expand rooms, etc.)
 - **Smart Naming**: AI-generated descriptive names like "Spacious Open-Concept Ranch" with rename support
+
+### Editor & Tools
+- **Floor Plan Editor**: Interactive SVG editor with drag-and-drop room manipulation
+- **Hybrid Mode**: Edit rooms visually, then regenerate with AI to refine the layout
+- **Room Palette**: Add rooms from a categorized palette with proper sizing
+- **Grid Snapping**: Precise room placement with configurable grid
+
+### Dev Mode (Debugging)
+- **Model Transparency**: Toggle-activated developer mode to understand AI behavior
+- **Visual Comparison**: Side-by-side, overlay, and slider views comparing before/after edits
+- **JPEG/SVG Toggle**: Switch between raster and vector views for each plan
+- **Room Deltas**: Color-coded table showing added, removed, and modified rooms
+- **Prompt Diff**: Line-by-line comparison of original vs edited prompts with syntax highlighting
+- **Generation Metadata**: Seeds, timing, model parameters, and area analysis
+
+### General
 - **Two-Phase Processing**: Plans display immediately while diversity analysis runs in background
 - **Real-time Progress**: Visual indicators show generation and analysis status
 - **Upload Support**: Analyze your own existing floor plan images
@@ -33,7 +56,8 @@ This tool:
 ```
 ├── backend/                  # Python FastAPI backend
 │   ├── api/                  # REST API endpoints
-│   │   ├── routes.py         # All API routes
+│   │   ├── routes.py         # Gemini generation routes
+│   │   ├── drafted_routes.py # Drafted.ai generation routes
 │   │   └── schemas.py        # Pydantic models
 │   ├── extractors/           # Feature extraction modules
 │   │   ├── color_segmentation.py   # Room detection via color
@@ -50,23 +74,42 @@ This tool:
 │   │   └── prompt_templates.py     # Engineered prompts
 │   └── utils/                # Utilities
 │
+├── editing/                  # Drafted.ai integration module
+│   ├── api_integration.py    # FastAPI integration layer
+│   ├── drafted_client.py     # Runpod endpoint client
+│   ├── svg_parser.py         # SVG floor plan parser
+│   ├── clip_tokenizer.py     # CLIP token validation
+│   └── rooms.json            # Room type definitions (30+ types)
+│
 ├── frontend/                 # Next.js React frontend
 │   ├── app/                  # Next.js app router
-│   │   ├── page.tsx          # Main application
+│   │   ├── page.tsx          # Main generation page
+│   │   ├── editor/           # Floor plan editor page
 │   │   └── how-it-works/     # Documentation page
 │   ├── components/           # React components
 │   │   ├── layout/           # Header, Section
+│   │   ├── drafted/          # Drafted generation components
+│   │   ├── editor/           # Floor plan editor components
+│   │   ├── dev/              # Dev mode debugging components
 │   │   ├── sidebar/          # GenerationSidebar
-│   │   ├── drafts/           # DraftGrid (stylized display, editable names)
+│   │   ├── drafts/           # DraftGrid
 │   │   ├── upload/           # DropZone
 │   │   ├── visualization/    # ScatterPlot, DiversityScore
 │   │   ├── generation/       # GenerationForm, GenerationProgress
 │   │   ├── analysis/         # AnalysisPanel
-│   │   └── EditPlanModal.tsx # AI-powered plan editing modal
+│   │   └── providers/        # React context providers
+│   ├── contexts/             # React contexts
+│   │   └── DevModeContext.tsx    # Dev mode state management
 │   ├── hooks/                # Custom React hooks
-│   │   ├── useAnalysis.ts    # Upload/analysis state
-│   │   └── useGeneration.ts  # Generation state (two-phase, edit, rename)
+│   │   ├── useAnalysis.ts        # Upload/analysis state
+│   │   ├── useGeneration.ts      # Gemini generation state
+│   │   ├── useDraftedGeneration.ts  # Drafted generation state
+│   │   └── useFloorPlanEditor.ts    # Editor state management
 │   └── lib/                  # API client, types, utilities
+│       ├── drafted-api.ts        # Drafted API client
+│       ├── drafted-types.ts      # TypeScript types
+│       ├── editor/               # Editor utilities
+│       └── dev/                  # Dev mode utilities
 │
 └── render.yaml               # Render deployment blueprint
 ```
@@ -137,7 +180,11 @@ npm run dev
 
 **Backend** (`backend/.env`):
 ```bash
+# Required for Gemini generation (diversity analysis)
 GEMINI_API_KEY=your_google_ai_studio_api_key
+
+# Optional: For Drafted.ai generation (precise room control)
+DRAFTED_API_ENDPOINT=https://api.runpod.ai/v2/your-endpoint-id
 ```
 
 **Frontend** (`frontend/.env.local` - for production):
@@ -147,18 +194,29 @@ NEXT_PUBLIC_API_URL=https://your-backend-url.onrender.com
 
 Get your Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
+For Drafted.ai integration, you'll need access to a Runpod endpoint running the Drafted diffusion model.
+
 ### Usage
 
 1. Open http://localhost:3000 in your browser
 2. Choose your workflow:
-   - **Generate with AI**: Configure bedrooms, bathrooms, style, count → Generate diverse plans
-   - **Upload Existing**: Upload 10-20 floor plan images (PNG or JPG)
-3. Watch the two-phase process:
-   - Plans appear immediately after generation
-   - "Generating Diversity Report" indicator shows analysis progress
-4. View results: diversity score, scatter plot, and metric breakdown
+   - **Generate with AI**: Configure rooms with precise sizes → Generate floor plans
+   - **Upload Existing**: Upload 10-20 floor plan images (PNG or JPG) for diversity analysis
+3. Edit plans:
+   - Click "Edit" on any plan to add/remove/resize rooms
+   - Use seed-based editing to maintain layout coherence
+4. Use the Editor (`/editor`):
+   - Drag and drop rooms from the palette
+   - Resize rooms with handles
+   - Switch to hybrid mode to regenerate with AI
+5. Enable Dev Mode:
+   - Toggle "DEV" in the header for debugging tools
+   - Compare before/after plans visually
+   - Inspect room deltas and prompt changes
 
 ## API Endpoints
+
+### Gemini Generation (Diversity Analysis)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -173,6 +231,18 @@ Get your Gemini API key from [Google AI Studio](https://aistudio.google.com/app/
 | `/api/plan/{id}/edit` | POST | Edit plan with AI (image-to-image) |
 | `/api/plan/{id}/rename` | PATCH | Rename a plan |
 | `/health` | GET | Health check |
+
+### Drafted.ai Generation (Precise Control)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/drafted/status` | GET | Check if Drafted API is available |
+| `/api/drafted/options` | GET | Get available room types and sizes |
+| `/api/drafted/validate` | POST | Validate generation config (token count) |
+| `/api/drafted/generate` | POST | Generate a floor plan with room specs |
+| `/api/drafted/generate/batch` | POST | Generate multiple plans with different seeds |
+| `/api/drafted/edit` | POST | Edit plan using seed-based editing |
+| `/api/drafted/rooms` | GET | Get complete rooms.json schema |
 
 ### Generation Request Example
 
@@ -266,6 +336,125 @@ AI generates descriptive names for each floor plan:
 
 ### Synthetic Fallback
 If Gemini API fails (rate limits, etc.), the system generates synthetic placeholder images to ensure the prototype always produces output.
+
+## Drafted.ai Integration
+
+The `editing/` module provides integration with Drafted's production diffusion model for precise floor plan generation.
+
+### Room Configuration
+
+Generate floor plans with exact room specifications:
+
+```json
+POST /api/drafted/generate
+{
+  "rooms": [
+    { "room_type": "primary_bedroom", "size": "M" },
+    { "room_type": "primary_bathroom", "size": "M" },
+    { "room_type": "kitchen", "size": "L" },
+    { "room_type": "living", "size": "L" },
+    { "room_type": "garage", "size": "M" }
+  ],
+  "num_steps": 30,
+  "guidance_scale": 7.5
+}
+```
+
+### Available Room Types
+
+The system supports 30+ room types organized by category:
+
+| Category | Room Types |
+|----------|------------|
+| Primary Suite | primary_bedroom, primary_bathroom, primary_closet |
+| Bedrooms | bedroom (multiple allowed) |
+| Bathrooms | bathroom (multiple allowed) |
+| Living Spaces | living, family_room, den, sunroom |
+| Dining | dining, nook |
+| Kitchen | kitchen, pantry, bar |
+| Utility | laundry, mudroom, storage, garage |
+| Outdoor | outdoor_living, front_porch, pool |
+| Flex | office, rec_room, theater, gym, foyer |
+
+### Seed-Based Editing
+
+Edit existing plans while maintaining layout coherence:
+
+```json
+POST /api/drafted/edit
+{
+  "original": {
+    "plan_id": "plan_123",
+    "seed_used": 42,
+    "prompt_used": "area = 2500 sqft\nprimary_bedroom = ..."
+  },
+  "add_rooms": [{ "room_type": "office", "size": "M" }],
+  "remove_rooms": ["garage"],
+  "resize_rooms": { "kitchen": "XL" }
+}
+```
+
+### CLIP Token Validation
+
+Prompts are validated against CLIP's 77-token limit before generation to ensure the model receives complete instructions.
+
+## Dev Mode (Debugging)
+
+A toggle-activated developer mode that provides transparency into the AI generation and editing process.
+
+### Enabling Dev Mode
+
+1. Click the **DEV** toggle in the header (next to the Drafted logo)
+2. The toggle turns coral when active with a pulsing green indicator
+3. Edit any floor plan to capture comparison data
+4. The Dev Mode panel opens automatically after edits
+
+### Features
+
+#### Visual Comparison
+- **Side-by-Side**: View original and edited plans next to each other
+- **Overlay**: Stack plans with adjustable opacity
+- **Slider**: Interactive before/after reveal slider
+- **Format Toggle**: Switch between JPEG and SVG views independently
+
+#### Room Deltas
+Shows a detailed breakdown of room changes:
+- **Added** (green): New rooms in the edited plan
+- **Removed** (red): Rooms deleted from the original
+- **Modified** (yellow): Rooms with changed size or area
+- Summary statistics: count changes and total area delta
+
+#### Prompt Comparison
+- Side-by-side view of original vs edited prompts
+- Line-by-line diff with syntax highlighting
+- Token count display for each prompt
+- Copy-to-clipboard functionality
+
+#### Metadata
+- Seed values (original and edited)
+- Generation timing
+- Model parameters (steps, guidance scale)
+- Area analysis and room counts
+
+### Architecture
+
+```
+frontend/
+  contexts/
+    DevModeContext.tsx      # Global state with localStorage persistence
+  components/
+    dev/
+      DevModeToggle.tsx     # Header toggle button
+      DevModePanel.tsx      # Main debugging panel
+      DevCompareView.tsx    # Visual plan comparison
+      RoomDeltaView.tsx     # Room changes table
+      PromptCompareView.tsx # Prompt diff display
+      ImageFormatToggle.tsx # JPEG/SVG switcher
+  lib/
+    dev/
+      deltaUtils.ts         # Room delta calculations
+      promptDiff.ts         # Prompt comparison logic
+```
 
 ## Deployment (Render)
 

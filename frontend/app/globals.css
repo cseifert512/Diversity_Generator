@@ -5,14 +5,125 @@
 /* Import fonts matching drafted.ai aesthetic */
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Sora:wght@400;500;600;700&display=swap');
 
+/* ============================================================================
+   THEME VARIABLES - Light Mode (Default)
+   ============================================================================ */
+:root {
+  /* Background colors */
+  --color-bg-primary: #faf9f7;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f5f4f2;
+  --color-bg-elevated: #ffffff;
+  --color-bg-overlay: rgba(0, 0, 0, 0.5);
+  
+  /* Text colors */
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #6b6b6b;
+  --color-text-muted: #a0a0a0;
+  --color-text-inverted: #ffffff;
+  
+  /* Border colors */
+  --color-border-primary: #e5e5e5;
+  --color-border-secondary: #d4d4d4;
+  --color-border-focus: #f97316;
+  
+  /* Accent colors */
+  --color-accent-primary: #f97316;
+  --color-accent-primary-hover: #ea580c;
+  --color-accent-secondary: #1a1a1a;
+  
+  /* Status colors */
+  --color-success: #22c55e;
+  --color-success-bg: #f0fdf4;
+  --color-error: #ef4444;
+  --color-error-bg: #fef2f2;
+  --color-warning: #f59e0b;
+  --color-warning-bg: #fffbeb;
+  --color-info: #3b82f6;
+  --color-info-bg: #eff6ff;
+  
+  /* Dev mode specific */
+  --color-dev-accent: #f97316;
+  --color-dev-bg: var(--color-bg-primary);
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+  
+  /* Transitions */
+  --transition-theme: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ============================================================================
+   THEME VARIABLES - Dark Mode (Dev Mode)
+   ============================================================================ */
+:root.dark,
+[data-theme="dark"] {
+  /* Background colors - Deep navy/charcoal palette */
+  --color-bg-primary: #0f0f1a;
+  --color-bg-secondary: #1a1a2e;
+  --color-bg-tertiary: #252542;
+  --color-bg-elevated: #2a2a4a;
+  --color-bg-overlay: rgba(0, 0, 0, 0.7);
+  
+  /* Text colors */
+  --color-text-primary: #f0f0f5;
+  --color-text-secondary: #a0a0b8;
+  --color-text-muted: #6b6b80;
+  --color-text-inverted: #0f0f1a;
+  
+  /* Border colors */
+  --color-border-primary: #3a3a5c;
+  --color-border-secondary: #4a4a6a;
+  --color-border-focus: #f97316;
+  
+  /* Accent colors - Brighter coral for dark mode */
+  --color-accent-primary: #ff8533;
+  --color-accent-primary-hover: #ff9f5c;
+  --color-accent-secondary: #f0f0f5;
+  
+  /* Status colors - Adjusted for dark backgrounds */
+  --color-success: #4ade80;
+  --color-success-bg: #0f2a1a;
+  --color-error: #f87171;
+  --color-error-bg: #2a0f0f;
+  --color-warning: #fbbf24;
+  --color-warning-bg: #2a2a0f;
+  --color-info: #60a5fa;
+  --color-info-bg: #0f1a2a;
+  
+  /* Dev mode specific */
+  --color-dev-accent: #ff8533;
+  --color-dev-bg: #1a1a2e;
+  
+  /* Shadows - More subtle in dark mode */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================================================
+   THEME-AWARE BASE STYLES
+   ============================================================================ */
 @layer base {
   * {
     @apply border-drafted-border;
+    transition: var(--transition-theme);
   }
 
   body {
-    @apply bg-drafted-cream text-drafted-black antialiased;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    @apply antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Dark mode body adjustments */
+  .dark body,
+  [data-theme="dark"] body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
   }
 
   /* Custom scrollbar - subtle */
@@ -37,11 +148,19 @@
 @layer components {
   /* Drafted.ai style cards */
   .card-drafted {
-    @apply bg-white rounded-drafted-lg shadow-drafted transition-all duration-200;
+    background-color: var(--color-bg-secondary);
+    @apply rounded-drafted-lg shadow-drafted transition-all duration-200;
   }
 
   .card-drafted:hover {
     @apply shadow-drafted-hover;
+  }
+  
+  /* Dark mode cards */
+  .dark .card-drafted,
+  [data-theme="dark"] .card-drafted {
+    background-color: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-primary);
   }
 
   /* Button styles - drafted.ai */
@@ -50,11 +169,29 @@
            text-white bg-drafted-black rounded-full 
            hover:bg-drafted-dark transition-colors duration-150;
   }
+  
+  .dark .btn-drafted-primary,
+  [data-theme="dark"] .btn-drafted-primary {
+    background-color: var(--color-accent-primary);
+    color: var(--color-text-inverted);
+  }
+  
+  .dark .btn-drafted-primary:hover,
+  [data-theme="dark"] .btn-drafted-primary:hover {
+    background-color: var(--color-accent-primary-hover);
+  }
 
   .btn-drafted-secondary {
     @apply inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium 
            text-drafted-black bg-white border border-drafted-border rounded-full 
            hover:bg-drafted-bg transition-colors duration-150;
+  }
+  
+  .dark .btn-drafted-secondary,
+  [data-theme="dark"] .btn-drafted-secondary {
+    background-color: var(--color-bg-tertiary);
+    border-color: var(--color-border-primary);
+    color: var(--color-text-primary);
   }
 
   .btn-drafted-coral {
@@ -62,11 +199,33 @@
            text-white bg-coral-500 rounded-full 
            hover:bg-coral-600 transition-colors duration-150;
   }
+  
+  .dark .btn-drafted-coral,
+  [data-theme="dark"] .btn-drafted-coral {
+    background-color: var(--color-accent-primary);
+  }
+  
+  .dark .btn-drafted-coral:hover,
+  [data-theme="dark"] .btn-drafted-coral:hover {
+    background-color: var(--color-accent-primary-hover);
+  }
 
   .btn-drafted-outline {
     @apply inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium 
            text-drafted-gray border border-drafted-border rounded-full 
            hover:border-drafted-gray hover:text-drafted-black transition-colors duration-150;
+  }
+  
+  .dark .btn-drafted-outline,
+  [data-theme="dark"] .btn-drafted-outline {
+    border-color: var(--color-border-primary);
+    color: var(--color-text-secondary);
+  }
+  
+  .dark .btn-drafted-outline:hover,
+  [data-theme="dark"] .btn-drafted-outline:hover {
+    border-color: var(--color-border-secondary);
+    color: var(--color-text-primary);
   }
 
   /* Room tag pills */
@@ -114,6 +273,18 @@
            focus:outline-none focus:ring-2 focus:ring-coral-500/20 focus:border-coral-500
            transition-colors duration-150;
   }
+  
+  .dark .input-drafted,
+  [data-theme="dark"] .input-drafted {
+    background-color: var(--color-bg-tertiary);
+    border-color: var(--color-border-primary);
+    color: var(--color-text-primary);
+  }
+  
+  .dark .input-drafted::placeholder,
+  [data-theme="dark"] .input-drafted::placeholder {
+    color: var(--color-text-muted);
+  }
 
   .select-drafted {
     @apply w-full px-4 py-2.5 bg-white border border-drafted-border rounded-drafted 
@@ -125,6 +296,14 @@
     background-repeat: no-repeat;
     background-size: 1.25em 1.25em;
     padding-right: 2.5rem;
+  }
+  
+  .dark .select-drafted,
+  [data-theme="dark"] .select-drafted {
+    background-color: var(--color-bg-tertiary);
+    border-color: var(--color-border-primary);
+    color: var(--color-text-primary);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a0a0b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   }
 
   /* Slider */
@@ -201,4 +380,135 @@
   .text-drafted-heading {
     @apply font-display font-semibold tracking-tight;
   }
+}
+
+/* ============================================================================
+   DEV MODE - Room Hover Linking Styles
+   ============================================================================ */
+.svg-room-interactive {
+  cursor: pointer;
+  transition: filter 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease;
+}
+
+.svg-room-interactive:hover {
+  filter: brightness(1.1);
+}
+
+.svg-room-highlighted {
+  stroke: var(--color-accent-primary) !important;
+  stroke-width: 3px !important;
+  filter: brightness(1.15) drop-shadow(0 0 8px var(--color-accent-primary));
+  animation: room-pulse 1s ease-in-out infinite;
+}
+
+@keyframes room-pulse {
+  0%, 100% {
+    filter: brightness(1.15) drop-shadow(0 0 8px var(--color-accent-primary));
+  }
+  50% {
+    filter: brightness(1.25) drop-shadow(0 0 12px var(--color-accent-primary));
+  }
+}
+
+/* Room tooltip */
+.room-tooltip {
+  position: absolute;
+  z-index: 100;
+  padding: 8px 12px;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  font-size: 12px;
+  color: var(--color-text-primary);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.room-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--color-border-primary);
+}
+
+.room-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--color-bg-elevated);
+}
+
+/* ============================================================================
+   DEV MODE - Dark Theme Overrides
+   ============================================================================ */
+.dark .bg-drafted-cream,
+[data-theme="dark"] .bg-drafted-cream {
+  background-color: var(--color-bg-primary) !important;
+}
+
+.dark .bg-drafted-bg,
+[data-theme="dark"] .bg-drafted-bg {
+  background-color: var(--color-bg-tertiary) !important;
+}
+
+.dark .bg-white,
+[data-theme="dark"] .bg-white {
+  background-color: var(--color-bg-secondary) !important;
+}
+
+.dark .text-drafted-black,
+[data-theme="dark"] .text-drafted-black {
+  color: var(--color-text-primary) !important;
+}
+
+.dark .text-drafted-gray,
+[data-theme="dark"] .text-drafted-gray {
+  color: var(--color-text-secondary) !important;
+}
+
+.dark .text-drafted-muted,
+[data-theme="dark"] .text-drafted-muted {
+  color: var(--color-text-muted) !important;
+}
+
+.dark .border-drafted-border,
+[data-theme="dark"] .border-drafted-border {
+  border-color: var(--color-border-primary) !important;
+}
+
+.dark .text-coral-500,
+[data-theme="dark"] .text-coral-500 {
+  color: var(--color-accent-primary) !important;
+}
+
+.dark .bg-coral-500,
+[data-theme="dark"] .bg-coral-500 {
+  background-color: var(--color-accent-primary) !important;
+}
+
+/* Header in dark mode */
+.dark header,
+[data-theme="dark"] header {
+  background-color: var(--color-bg-secondary) !important;
+  border-color: var(--color-border-primary) !important;
+}
+
+/* Scrollbar in dark mode */
+.dark ::-webkit-scrollbar-thumb,
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-secondary);
+}
+
+.dark ::-webkit-scrollbar-track,
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background-color: var(--color-bg-tertiary);
 }

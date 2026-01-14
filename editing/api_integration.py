@@ -229,6 +229,12 @@ class DraftedAPIIntegration:
         Returns:
             Edited plan result dict
         """
+        print(f"[DEBUG] edit_plan called")
+        print(f"[DEBUG] Original plan_id: {original_result.get('plan_id')}")
+        print(f"[DEBUG] Original seed: {original_result.get('seed_used')}")
+        print(f"[DEBUG] Original prompt:\n{original_result.get('prompt_used', '')[:500]}...")
+        print(f"[DEBUG] Edit operations: add={add_rooms}, remove={remove_rooms}, resize={resize_rooms}, sqft={adjust_sqft}")
+        
         # Reconstruct GenerationResult for client
         original = GenerationResult(
             success=original_result.get("success", True),
@@ -253,6 +259,10 @@ class DraftedAPIIntegration:
             adjust_sqft=adjust_sqft,
             plan_id=plan_id
         )
+        
+        # Log the result
+        print(f"[DEBUG] Edit result: success={result.success}, rooms_count={len(result.rooms)}")
+        print(f"[DEBUG] Edit result rooms: {[r.room_type for r in result.rooms]}")
         
         return self._format_result(result)
     

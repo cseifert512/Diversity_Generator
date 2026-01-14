@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
   Wand2, 
@@ -10,7 +11,8 @@ import {
   Pencil, 
   X,
   Maximize2,
-  Hash
+  Hash,
+  PenTool,
 } from 'lucide-react';
 import type { DraftedPlan } from '@/lib/drafted-types';
 
@@ -29,11 +31,18 @@ export function SVGFloorPlanCard({
   onSelect,
   onRename,
 }: SVGFloorPlanCardProps) {
+  const router = useRouter();
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(plan.display_name || '');
   const [copiedSeed, setCopiedSeed] = useState(false);
 
   const displayName = plan.display_name || `Floor Plan ${String(index + 1).padStart(2, '0')}`;
+
+  const handleOpenInEditor = () => {
+    // Save plan to localStorage for the editor to pick up
+    localStorage.setItem('editor_plan', JSON.stringify(plan));
+    router.push('/editor');
+  };
 
   const handleSaveName = async () => {
     if (onRename && nameValue.trim()) {
@@ -218,12 +227,21 @@ export function SVGFloorPlanCard({
           </button>
         )}
         <button
-          onClick={handleDownloadSVG}
+          onClick={handleOpenInEditor}
           disabled={!plan.svg}
           className="flex-1 btn-drafted-outline text-sm py-2.5 flex items-center justify-center gap-2 disabled:opacity-50"
+          title="Open in Floor Plan Editor"
+        >
+          <PenTool className="w-4 h-4" />
+          Editor
+        </button>
+        <button
+          onClick={handleDownloadSVG}
+          disabled={!plan.svg}
+          className="px-3 btn-drafted-outline text-sm py-2.5 flex items-center justify-center disabled:opacity-50"
+          title="Download SVG"
         >
           <Download className="w-4 h-4" />
-          SVG
         </button>
       </div>
     </motion.div>

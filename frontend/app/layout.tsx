@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { ClientProviders } from '@/components/providers/ClientProviders';
 
 export const metadata: Metadata = {
   title: 'Floor Plan Diversity Analyzer | Drafted',
@@ -14,9 +15,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-white">
-        <div className="flex flex-col min-h-screen">
-          {children}
-        </div>
+        <ClientProviders>
+          <div className="flex flex-col min-h-screen">
+            {children}
+          </div>
+        </ClientProviders>
       </body>
     </html>
   );

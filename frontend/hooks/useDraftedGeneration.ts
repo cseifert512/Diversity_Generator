@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type {
   DraftedPlan,
   DraftedGenerationResult,
@@ -10,6 +10,55 @@ import type {
 import { getDraftedRoomOptions, checkDraftedAvailable } from '@/lib/drafted-api';
 
 const STORAGE_KEY = 'drafted_plans';
+
+// Helper to safely store plans, excluding large base64 data if needed
+function savePlansToStorage(plans: DraftedPlan[]): void {
+  try {
+    // Try to save full plans first
+    const fullData = JSON.stringify(plans);
+    localStorage.setItem(STORAGE_KEY, fullData);
+  } catch (e) {
+    // If quota exceeded, try saving without base64 images
+    console.warn('Storage quota exceeded, saving without images:', e);
+    try {
+      const lightPlans = plans.map(p => ({
+        ...p,
+        image_base64: undefined, // Remove large images to save space
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lightPlans));
+    } catch (e2) {
+      console.error('Failed to save plans even without images:', e2);
+    }
+  }
+}
+
+// Helper to load plans from storage
+function loadPlansFromStorage(): DraftedPlan[] {
+  try {
+    // Try localStorage first (persistent)
+    let saved = localStorage.getItem(STORAGE_KEY);
+    
+    // Fallback to sessionStorage for backwards compatibility
+    if (!saved) {
+      saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        // Migrate from sessionStorage to localStorage
+        localStorage.setItem(STORAGE_KEY, saved);
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
+    }
+    
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to restore plans:', e);
+  }
+  return [];
+}
 
 interface UseDraftedGenerationReturn {
   // State
@@ -43,6 +92,9 @@ export function useDraftedGeneration(): UseDraftedGenerationReturn {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgressState] = useState({ completed: 0, total: 0 });
 
+  // Track if initial load is complete to avoid double-saving
+  const initialLoadComplete = useRef(false);
+
   // Check availability and load room types on mount
   useEffect(() => {
     async function init() {
@@ -60,36 +112,30 @@ export function useDraftedGeneration(): UseDraftedGenerationReturn {
           console.warn('Could not load room types from API:', e);
         }
 
-        // Restore plans from session storage
-        try {
-          const saved = sessionStorage.getItem(STORAGE_KEY);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed)) {
-              setPlans(parsed);
-            }
-          }
-        } catch (e) {
-          console.error('Failed to restore plans:', e);
+        // Restore plans from storage
+        const restoredPlans = loadPlansFromStorage();
+        if (restoredPlans.length > 0) {
+          console.log('[DEBUG] Restored', restoredPlans.length, 'plans from storage');
+          setPlans(restoredPlans);
         }
       } catch (e) {
         console.error('Failed to initialize Drafted:', e);
         setError(e instanceof Error ? e.message : 'Failed to initialize');
       } finally {
         setIsLoading(false);
+        initialLoadComplete.current = true;
       }
     }
 
     init();
   }, []);
 
-  // Save plans to session storage
+  // Save plans to storage when they change
   useEffect(() => {
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
-    } catch (e) {
-      console.error('Failed to save plans:', e);
-    }
+    // Don't save during initial load (we just loaded from storage)
+    if (!initialLoadComplete.current) return;
+    
+    savePlansToStorage(plans);
   }, [plans]);
 
   // Load room types manually
@@ -150,7 +196,8 @@ export function useDraftedGeneration(): UseDraftedGenerationReturn {
     setPlans([]);
     setSelectedPlanId(null);
     try {
-      sessionStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY); // Clean up old sessionStorage too
     } catch (e) {
       console.error('Failed to clear storage:', e);
     }

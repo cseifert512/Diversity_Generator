@@ -20,6 +20,7 @@ import type {
 } from '@/lib/drafted-types';
 import { SIZE_LABELS } from '@/lib/drafted-types';
 import { editDraftedPlan } from '@/lib/drafted-api';
+import { useDevModeOptional, EditOperation } from '@/contexts/DevModeContext';
 
 interface SeedEditPanelProps {
   plan: DraftedPlan;
@@ -39,6 +40,9 @@ export function SeedEditPanel({
   const [editMode, setEditMode] = useState<EditMode>('add');
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Dev mode tracking
+  const devMode = useDevModeOptional();
 
   // Add room state
   const [addRoomType, setAddRoomType] = useState('office');
@@ -69,22 +73,67 @@ export function SeedEditPanel({
         original_prompt: plan.prompt,
       };
 
+      // Build edit operation for dev mode tracking
+      let editOperation: EditOperation = {
+        type: 'custom',
+        description: 'Unknown edit',
+      };
+
       switch (editMode) {
         case 'add':
           request.add_rooms = [{ room_type: addRoomType, size: addRoomSize }];
+          editOperation = {
+            type: 'add_room',
+            description: `Add ${addRoomType} (${addRoomSize})`,
+            addedRooms: [{ room_type: addRoomType, size: addRoomSize }],
+          };
           break;
         case 'remove':
           request.remove_rooms = [removeRoomType];
+          editOperation = {
+            type: 'remove_room',
+            description: `Remove ${removeRoomType}`,
+            removedRooms: [removeRoomType],
+          };
           break;
         case 'resize':
           request.resize_rooms = { [resizeRoomType]: resizeNewSize };
+          editOperation = {
+            type: 'resize_room',
+            description: `Resize ${resizeRoomType} to ${resizeNewSize}`,
+            resizedRooms: { [resizeRoomType]: resizeNewSize },
+          };
           break;
         case 'sqft':
           request.adjust_sqft = sqftDelta;
+          editOperation = {
+            type: 'adjust_sqft',
+            description: `Adjust area by ${sqftDelta > 0 ? '+' : ''}${sqftDelta} sqft`,
+            sqftDelta: sqftDelta,
+          };
           break;
       }
 
       const result = await editDraftedPlan(request);
+      
+      // Track edit in dev mode if enabled
+      if (devMode?.isEnabled) {
+        const editedPlan: DraftedPlan = {
+          id: result.plan_id,
+          seed: result.seed_used,
+          prompt: result.prompt_used,
+          image_base64: result.image_base64,
+          svg: result.svg,
+          rooms: result.rooms,
+          total_area_sqft: result.total_area_sqft,
+          created_at: Date.now(),
+        };
+        
+        devMode.trackEdit(plan, editedPlan, editOperation, {
+          elapsedSeconds: result.elapsed_seconds,
+        });
+      }
+      
       onEditComplete(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Edit failed');

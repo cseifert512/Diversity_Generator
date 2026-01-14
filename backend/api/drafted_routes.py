@@ -332,6 +332,30 @@ async def edit_drafted_plan(request: DraftedEditRequest):
             detail="Drafted API not configured"
         )
     
+    # Validate the original prompt is present
+    original_prompt = request.original.get("prompt_used", "")
+    original_seed = request.original.get("seed_used", 0)
+    
+    print(f"[DEBUG] /edit endpoint received:")
+    print(f"[DEBUG]   plan_id: {request.original.get('plan_id')}")
+    print(f"[DEBUG]   seed_used: {original_seed}")
+    print(f"[DEBUG]   prompt_used length: {len(original_prompt)} chars")
+    print(f"[DEBUG]   prompt_used preview: {original_prompt[:200] if original_prompt else 'EMPTY!'}...")
+    print(f"[DEBUG]   add_rooms: {request.add_rooms}")
+    print(f"[DEBUG]   remove_rooms: {request.remove_rooms}")
+    print(f"[DEBUG]   resize_rooms: {request.resize_rooms}")
+    print(f"[DEBUG]   adjust_sqft: {request.adjust_sqft}")
+    
+    if not original_prompt:
+        raise HTTPException(
+            status_code=400,
+            detail="Original prompt is required for editing. The plan may not have been properly saved."
+        )
+    
+    # Count rooms in original prompt
+    original_room_lines = [l for l in original_prompt.split("\n") if l.strip() and "=" in l and "area" not in l.lower()]
+    print(f"[DEBUG]   Original prompt has {len(original_room_lines)} room lines")
+    
     try:
         add_rooms = None
         if request.add_rooms:
@@ -340,7 +364,7 @@ async def edit_drafted_plan(request: DraftedEditRequest):
                 for r in request.add_rooms
             ]
         
-        return await integration.edit_plan(
+        result = await integration.edit_plan(
             original_result=request.original,
             add_rooms=add_rooms,
             remove_rooms=request.remove_rooms,
@@ -348,7 +372,15 @@ async def edit_drafted_plan(request: DraftedEditRequest):
             adjust_sqft=request.adjust_sqft,
         )
         
+        # Log comparison
+        print(f"[DEBUG] Edit complete: prompt had {len(original_room_lines)} rooms, result has {len(result.get('rooms', []))} rooms")
+        
+        return result
+        
     except Exception as e:
+        import traceback
+        print(f"[ERROR] Edit failed: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 

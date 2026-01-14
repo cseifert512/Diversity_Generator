@@ -309,11 +309,17 @@ class DraftedPromptBuilder:
         Returns:
             Modified prompt for use with same seed
         """
+        print(f"[DEBUG] modify_prompt_for_edit called")
+        print(f"[DEBUG] Original prompt:\n{original_prompt}")
+        print(f"[DEBUG] add_rooms={add_rooms}, remove_rooms={remove_rooms}, resize_rooms={resize_rooms}, adjust_sqft={adjust_sqft}")
+        
         lines = original_prompt.strip().split("\n")
         
         # Parse existing prompt
         sqft_line = lines[0] if lines else "area = 2000 sqft"
         room_lines = [l for l in lines[1:] if l.strip() and "=" in l]
+        
+        print(f"[DEBUG] Parsed {len(room_lines)} room lines from original prompt")
         
         # Adjust sqft
         if adjust_sqft is not None:
@@ -323,10 +329,12 @@ class DraftedPromptBuilder:
         
         # Remove rooms
         if remove_rooms:
+            before_count = len(room_lines)
             room_lines = [
                 l for l in room_lines 
                 if not any(r.lower() in l.lower() for r in remove_rooms)
             ]
+            print(f"[DEBUG] Removed {before_count - len(room_lines)} rooms")
         
         # Resize rooms
         if resize_rooms:
@@ -352,11 +360,53 @@ class DraftedPromptBuilder:
                 prompt_name = self.catalog.get_prompt_name(room.room_type, room.size)
                 if prompt_name:
                     room_lines.append(f"{prompt_key} = {prompt_name.lower()}")
+                    print(f"[DEBUG] Added room: {prompt_key} = {prompt_name.lower()}")
         
-        # Rebuild prompt with proper ordering
-        # Parse room lines back to RoomSpec for sorting
-        # (simplified - just return as-is for now)
-        return sqft_line + "\n\n" + "\n".join(room_lines)
+        # RE-SORT rooms by priority to maintain correct ordering
+        # This is critical for model adherence!
+        sorted_room_lines = self._sort_room_lines_by_priority(room_lines)
+        
+        final_prompt = sqft_line + "\n\n" + "\n".join(sorted_room_lines)
+        print(f"[DEBUG] Final modified prompt ({len(sorted_room_lines)} rooms):\n{final_prompt}")
+        
+        return final_prompt
+    
+    def _sort_room_lines_by_priority(self, room_lines: List[str]) -> List[str]:
+        """
+        Sort room lines by priority based on prompt key.
+        
+        Priority order: primary bed → primary bath → primary closet → bed + closet → rest alphabetically
+        """
+        def get_priority(line: str) -> tuple:
+            prompt_key = line.split("=")[0].strip().lower()
+            
+            # Map prompt keys to room types for priority lookup
+            key_to_type = {
+                "primary bed": "primary_bedroom",
+                "primary bath": "primary_bathroom", 
+                "primary closet": "primary_closet",
+                "bed + closet": "bedroom",
+                "bed": "bedroom",
+            }
+            
+            # Check for exact matches first
+            room_type = key_to_type.get(prompt_key)
+            if room_type:
+                priority = self.catalog.get_priority(room_type)
+            else:
+                # Try to find a matching room type
+                for rt_key in self.catalog.get_all_room_types(include_hidden=True):
+                    rt_prompt_key = self.catalog.get_prompt_key(rt_key)
+                    if rt_prompt_key.lower() == prompt_key:
+                        priority = self.catalog.get_priority(rt_key)
+                        break
+                else:
+                    priority = 99  # Default for unknown
+            
+            # Return tuple of (priority, alphabetical key) for stable sorting
+            return (priority, prompt_key)
+        
+        return sorted(room_lines, key=get_priority)
 
 
 class DraftedFloorPlanClient:
@@ -576,6 +626,9 @@ class DraftedFloorPlanClient:
         if plan_id is None:
             plan_id = f"edit_{uuid.uuid4().hex[:8]}"
         
+        print(f"[DEBUG] edit_with_seed: original seed={original_result.seed_used}")
+        print(f"[DEBUG] edit_with_seed: original prompt has {len(original_result.prompt_used.split(chr(10)))} lines")
+        
         # Modify the original prompt
         modified_prompt = self.prompt_builder.modify_prompt_for_edit(
             original_result.prompt_used,
@@ -584,6 +637,10 @@ class DraftedFloorPlanClient:
             resize_rooms=resize_rooms,
             adjust_sqft=adjust_sqft
         )
+        
+        # Count rooms in the modified prompt for comparison
+        prompt_room_lines = [l for l in modified_prompt.split("\n") if l.strip() and "=" in l and "area" not in l.lower()]
+        print(f"[DEBUG] Modified prompt has {len(prompt_room_lines)} room lines")
         
         # Use same seed for similar design
         payload = {
@@ -615,6 +672,12 @@ class DraftedFloorPlanClient:
                 
                 data = response.json()
                 elapsed = time.time() - start_time
+                
+                # Log raw response rooms count
+                output = data.get("output", data)
+                raw_rooms = output.get("rooms", [])
+                print(f"[DEBUG] API response has {len(raw_rooms)} rooms in output.rooms")
+                print(f"[DEBUG] Room types in response: {[r.get('room_type') for r in raw_rooms]}")
                 
                 return self._parse_response(data, plan_id, modified_prompt, elapsed)
                 
